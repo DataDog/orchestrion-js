@@ -1,0 +1,23 @@
+[package]
+name = "orchestrion-js"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+lto = true
+
+[dependencies]
+nodejs-semver = "4.1.0"
+serde = "1"
+swc = "13.0.1"
+swc_core = { version = "13.3.*", features = ["ecma_plugin_transform","ecma_quote"] }
+swc_ecma_parser = "8.0.2"
+swc_ecma_visit = { version = "6.0.0", features = ["path"] }
+yaml-rust2 = "0.10.0"
+
+# .cargo/config.toml defines few alias to build plugin.
+# cargo build-wasi generates wasm-wasi32 binary
+# cargo build-wasm32 generates wasm32-unknown-unknown binary.
