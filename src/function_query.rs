@@ -71,9 +71,20 @@ pub struct FunctionQuery {
 
 impl FunctionQuery {
     pub fn matches_decl(&self, func: &FnDecl, count: usize) -> bool {
+        // TODO(bengl) check if it's only the count that's wrong, and somehow 
+        // signal that so we can update the counter.
         matches!(self.typ, FunctionType::FunctionDeclaration)
             && self.kind.matches(&func.function)
             && func.ident.sym == self.name
+            && count == self.index
+    }
+
+    pub fn matches_expr(&self, func: &FnExpr, count: usize, name: &str) -> bool {
+        // TODO(bengl) check if it's only the count that's wrong, and somehow 
+        // signal that so we can update the counter.
+        matches!(self.typ, FunctionType::FunctionExpression)
+            && self.kind.matches(&func.function)
+            && name == self.name
             && count == self.index
     }
 }

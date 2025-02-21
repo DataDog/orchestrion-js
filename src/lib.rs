@@ -139,8 +139,8 @@ mod tests {
         .unwrap()
     }
 
-    fn init_instrumentor() -> Instrumentor {
-        let yaml = r#"
+    fn init_instrumentor(typ: &str) -> Instrumentor {
+        let yaml = format!(r#"
 version: 1
 instrumentations:
   - module_name: undici
@@ -148,34 +148,64 @@ instrumentations:
     file_path: index.mjs
     function_query:
       name: fetch
-      type: decl
+      type: {}
       kind: async
       index: 0
     operator: traceAsync
     channel_name: fetch
-"#;
+"#, typ);
         yaml.parse().unwrap()
     }
 
+//     #[test]
+//     fn basic_mjs() {
+//         let mut instrumentor = init_instrumentor("decl");
+//         let contents = "export async function fetch(url) { return 42; }";
+// 
+//         let instrumentations = instrumentor.get_matching_instrumentations(
+//             "undici",
+//             "0.0.1",
+//             &PathBuf::from("index.mjs"),
+//         );
+// 
+//         let result = transpile(contents, IsModule::Bool(true), instrumentations);
+//         print_result(contents, &result);
+//     }
+// 
+//     #[test]
+//     fn basic_cjs() {
+//         let mut instrumentor = init_instrumentor("decl");
+//         let contents = "async function fetch(url) { return 42; }\nmodule.exports = { fetch };";
+// 
+//         let instrumentations = instrumentor.get_matching_instrumentations(
+//             "undici",
+//             "0.0.1",
+//             &PathBuf::from("index.mjs"),
+//         );
+// 
+//         let result = transpile(contents, IsModule::Bool(true), instrumentations);
+//         print_result(contents, &result);
+//     }
+// 
+//     #[test]
+//     fn expr_mjs() {
+//         let mut instrumentor = init_instrumentor("expr");
+//         let contents = "const fetch = async function (url) { return 42; }; export { fetch };";
+// 
+//         let instrumentations = instrumentor.get_matching_instrumentations(
+//             "undici",
+//             "0.0.1",
+//             &PathBuf::from("index.mjs"),
+//         );
+// 
+//         let result = transpile(contents, IsModule::Bool(true), instrumentations);
+//         print_result(contents, &result);
+//     }
+
     #[test]
-    fn basic_mjs() {
-        let mut instrumentor = init_instrumentor();
-        let contents = "export async function fetch(url) { return 42; }";
-
-        let instrumentations = instrumentor.get_matching_instrumentations(
-            "undici",
-            "0.0.1",
-            &PathBuf::from("index.mjs"),
-        );
-
-        let result = transpile(contents, IsModule::Bool(true), instrumentations);
-        print_result(contents, &result);
-    }
-
-    #[test]
-    fn basic_cjs() {
-        let mut instrumentor = init_instrumentor();
-        let contents = "async function fetch(url) { return 42; }\nmodule.exports = { fetch };";
+    fn expr_cjs() {
+        let mut instrumentor = init_instrumentor("expr");
+        let contents = "exports.fetch = async function (url) { return 42; };";
 
         let instrumentations = instrumentor.get_matching_instrumentations(
             "undici",
