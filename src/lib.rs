@@ -74,10 +74,13 @@ mod tests {
     use swc_core::ecma::ast::EsVersion;
     use swc_ecma_parser::{EsSyntax, Syntax};
     use swc_ecma_visit::VisitMutWith;
+    use std::process::Command;
+    use std::io::prelude::*;
+    use assert_cmd::prelude::*;
+    use tempfile;
 
     fn print_result(original: &str, modified: &str) {
-        println!("\n - == === Original === == - \n{}\n\n", original);
-        println!("\n - == === Modified === == - \n{}\n\n", modified);
+        println!("\n - == === Original === == - \n{}\n\n\n - == === Modified === == - \n{}\n\n", original, modified);
     }
 
     fn transpile(
@@ -133,6 +136,8 @@ mod tests {
                         },
                     )
                     .unwrap();
+
+                print_result(contents, &result.code);
                 Ok(result.code)
             },
         )
@@ -151,61 +156,146 @@ instrumentations:
       type: {}
       kind: async
       index: 0
-    operator: traceAsync
+    operator: tracePromise
     channel_name: fetch
 "#, typ);
         yaml.parse().unwrap()
     }
 
-//     #[test]
-//     fn basic_mjs() {
-//         let mut instrumentor = init_instrumentor("decl");
-//         let contents = "export async function fetch(url) { return 42; }";
-// 
-//         let instrumentations = instrumentor.get_matching_instrumentations(
-//             "undici",
-//             "0.0.1",
-//             &PathBuf::from("index.mjs"),
-//         );
-// 
-//         let result = transpile(contents, IsModule::Bool(true), instrumentations);
-//         print_result(contents, &result);
-//     }
-// 
-//     #[test]
-//     fn basic_cjs() {
-//         let mut instrumentor = init_instrumentor("decl");
-//         let contents = "async function fetch(url) { return 42; }\nmodule.exports = { fetch };";
-// 
-//         let instrumentations = instrumentor.get_matching_instrumentations(
-//             "undici",
-//             "0.0.1",
-//             &PathBuf::from("index.mjs"),
-//         );
-// 
-//         let result = transpile(contents, IsModule::Bool(true), instrumentations);
-//         print_result(contents, &result);
-//     }
-// 
-//     #[test]
-//     fn expr_mjs() {
-//         let mut instrumentor = init_instrumentor("expr");
-//         let contents = "const fetch = async function (url) { return 42; }; export { fetch };";
-// 
-//         let instrumentations = instrumentor.get_matching_instrumentations(
-//             "undici",
-//             "0.0.1",
-//             &PathBuf::from("index.mjs"),
-//         );
-// 
-//         let result = transpile(contents, IsModule::Bool(true), instrumentations);
-//         print_result(contents, &result);
-//     }
+    fn run_with_node(test_code: &str, instrumented_code: &str, mjs: bool) {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let extension = if mjs { "mjs" } else { "js" };
+        let test_file = temp_dir.path().join(format!("test_file.{}", extension));
+        let mut file = std::fs::File::create(&test_file).unwrap();
+        file.write_all(test_code.as_bytes()).unwrap();
+
+        let instrumented_file = temp_dir.path().join(format!("instrumented.{}", extension));
+        let mut file = std::fs::File::create(&instrumented_file).unwrap();
+        file.write_all(instrumented_code.as_bytes()).unwrap();
+
+        Command::new("node")
+            .stdout(std::process::Stdio::inherit())
+            .stderr(std::process::Stdio::inherit())
+            .arg(&test_file)
+            .assert().success();
+    }
+
+    fn get_test_code(channel: &str, test_code: &str, mjs: bool) -> String {
+        let imports = if mjs {
+            "import { tracingChannel } from 'diagnostics_channel'; import assert from 'assert';"
+        } else {
+            "const { tracingChannel } = require('diagnostics_channel'); const assert = require('assert');"
+        };
+        format!(r#"
+{}
+const channel = tracingChannel('{}');
+const context = {{}};
+channel.subscribe({{
+  start(message) {{
+    message.context = context;
+    context.start = true;
+  }},
+  end(message) {{
+    message.context.end = true;
+    // Handle end message
+  }},
+  asyncStart(message) {{
+    message.context.asyncStart = message.result
+    // Handle asyncStart message
+  }},
+  asyncEnd(message) {{
+    message.context.asyncEnd = message.result;
+  }}
+}});
+// Test code
+{}
+"#, imports, channel, test_code)
+    }
+
+    fn transpile_and_test(channel: &str, mjs: bool, instrumentations: Vec<&mut Instrumentation>, contents: &str, test_code: &str) {
+        let result = transpile(contents, IsModule::Bool(mjs), instrumentations);
+        let all_test_code = get_test_code(channel, test_code, mjs);
+        run_with_node(&all_test_code, &result, mjs);
+    }
+
+    #[test]
+    fn decl_mjs() {
+        let mut instrumentor = init_instrumentor("decl");
+        let instrumentations = instrumentor.get_matching_instrumentations(
+            "undici",
+            "0.0.1",
+            &PathBuf::from("index.mjs"),
+        );
+ 
+        let contents = "export async function fetch(url) { return 42; }";
+        let test_code = r#"
+import { fetch } from './instrumented.mjs';
+const result = await fetch('https://example.com');
+assert.strictEqual(result, 42);
+assert.deepStrictEqual(context, {
+  start: true,
+  end: true,
+  asyncStart: 42,
+  asyncEnd: 42
+});
+        "#;
+        transpile_and_test("orchestrion:undici:fetch", true, instrumentations, contents, test_code);
+    }
+ 
+    #[test]
+    fn decl_cjs() {
+        let mut instrumentor = init_instrumentor("decl");
+        let instrumentations = instrumentor.get_matching_instrumentations(
+            "undici",
+            "0.0.1",
+            &PathBuf::from("index.mjs"),
+        );
+ 
+        let contents = "async function fetch(url) { return 42; }\nmodule.exports = { fetch };";
+        let test_code = r#"
+const { fetch } = require('./instrumented.js');
+(async () => {
+  const result = await fetch('https://example.com');
+  assert.strictEqual(result, 42);
+  assert.deepStrictEqual(context, {
+    start: true,
+    end: true,
+    asyncStart: 42,
+    asyncEnd: 42
+  });
+})();
+        "#;
+        transpile_and_test("orchestrion:undici:fetch", false, instrumentations, contents, test_code);
+    }
+ 
+    #[test]
+    fn expr_mjs() {
+        let mut instrumentor = init_instrumentor("expr");
+ 
+        let instrumentations = instrumentor.get_matching_instrumentations(
+            "undici",
+            "0.0.1",
+            &PathBuf::from("index.mjs"),
+        );
+ 
+        let contents = "const fetch = async function (url) { return 42; }; export { fetch };";
+        let test_code = r#"
+import { fetch } from './instrumented.mjs';
+const result = await fetch('https://example.com');
+assert.strictEqual(result, 42);
+assert.deepStrictEqual(context, {
+  start: true,
+  end: true,
+  asyncStart: 42,
+  asyncEnd: 42
+});
+        "#;
+        transpile_and_test("orchestrion:undici:fetch", true, instrumentations, contents, test_code);
+    }
 
     #[test]
     fn expr_cjs() {
         let mut instrumentor = init_instrumentor("expr");
-        let contents = "exports.fetch = async function (url) { return 42; };";
 
         let instrumentations = instrumentor.get_matching_instrumentations(
             "undici",
@@ -213,7 +303,20 @@ instrumentations:
             &PathBuf::from("index.mjs"),
         );
 
-        let result = transpile(contents, IsModule::Bool(true), instrumentations);
-        print_result(contents, &result);
+        let contents = "exports.fetch = async function (url) { return 42; };";
+        let test_code = r#"
+const { fetch } = require('./instrumented.js');
+(async () => {
+  const result = await fetch('https://example.com');
+  assert.strictEqual(result, 42);
+  assert.deepStrictEqual(context, {
+    start: true,
+    end: true,
+    asyncStart: 42,
+    asyncEnd: 42
+  });
+})();
+        "#;
+        transpile_and_test("orchestrion:undici:fetch", false, instrumentations, contents, test_code);
     }
 }
