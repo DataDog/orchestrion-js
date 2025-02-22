@@ -12,6 +12,7 @@ macro_rules! get_str {
 pub enum FunctionType {
     FunctionDeclaration,
     FunctionExpression,
+    Method,
 }
 
 impl FunctionType {
@@ -19,6 +20,7 @@ impl FunctionType {
         match s {
             "decl" => Some(FunctionType::FunctionDeclaration),
             "expr" => Some(FunctionType::FunctionExpression),
+            "method" => Some(FunctionType::Method),
             _ => None,
         }
     }
@@ -83,6 +85,13 @@ impl FunctionQuery {
         // TODO(bengl) check if it's only the count that's wrong, and somehow 
         // signal that so we can update the counter.
         matches!(self.typ, FunctionType::FunctionExpression)
+            && self.kind.matches(&func.function)
+            && name == self.name
+            && count == self.index
+    }
+
+    pub fn matches_class_method(&self, func: &ClassMethod, count: usize, name: &str) -> bool {
+        matches!(self.typ, FunctionType::Method)
             && self.kind.matches(&func.function)
             && name == self.name
             && count == self.index

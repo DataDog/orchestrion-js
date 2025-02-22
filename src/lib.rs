@@ -158,6 +158,26 @@ instrumentations:
       index: 0
     operator: tracePromise
     channel_name: fetch
+  - module_name: undici
+    version_range: ">=0.0.1"
+    file_path: index.mjs
+    function_query:
+      name: fetch
+      type: method
+      kind: async
+      index: 0
+    operator: tracePromise
+    channel_name: Undici_fetch
+  - module_name: "@langchain/core"
+    version_range: ">=0.1.0"
+    file_path: dist/runnables/base.js
+    function_query:
+      name: batch
+      type: method
+      kind: async
+      index: 0
+    operator: tracePromise
+    channel_name: runnablesequence_batch
 "#, typ);
         yaml.parse().unwrap()
     }
@@ -318,5 +338,41 @@ const { fetch } = require('./instrumented.js');
 })();
         "#;
         transpile_and_test("orchestrion:undici:fetch", false, instrumentations, contents, test_code);
+    }
+
+    #[test]
+    fn class_method_cjs() {
+        let mut instrumentor = init_instrumentor("expr");
+
+        let instrumentations = instrumentor.get_matching_instrumentations(
+            "undici",
+            "0.0.1",
+            &PathBuf::from("index.mjs"),
+        );
+
+        let contents = r#"
+class Undici {
+    async fetch (lmao) {
+        return 42;
+    }
+}
+
+module.exports = Undici;
+"#;
+        let test_code = r#"
+const Undici = require('./instrumented.js');
+(async () => {
+  const undici = new Undici;
+  const result = await undici.fetch('https://example.com');
+  assert.strictEqual(result, 42);
+  assert.deepStrictEqual(context, {
+    start: true,
+    end: true,
+    asyncStart: 42,
+    asyncEnd: 42
+  });
+})();
+        "#;
+        transpile_and_test("orchestrion:undici:Undici_fetch", false, instrumentations, contents, test_code);
     }
 }

@@ -77,7 +77,7 @@ impl Instrumentation {
                 ch = ch_ident
             ),
             quote!(
-                "return $trace(traced, { arguments} );" as Stmt,
+                "return $trace(traced, { arguments, self: this } );" as Stmt,
                 trace = trace_ident
             ),
         ];
@@ -95,33 +95,77 @@ impl Instrumentation {
     pub fn matches(&self, module_name: &str, version: &str, file_path: &PathBuf) -> bool {
         self.config.matches(module_name, version, file_path)
     }
+
+    pub fn module_already_has_import(&self, module: &Module) -> bool {
+        let first = module.body.first().unwrap();
+        if let ModuleItem::ModuleDecl(decl) = first {
+            if let ModuleDecl::Import(import) = decl {
+                let spec = import.specifiers.first().unwrap();
+                if let ImportSpecifier::Named(named) = spec {
+                    return named.local.sym == ident!("tr_ch_apm_tracingChannel").sym;
+                }
+            }
+        }
+        false
+    }
+
+    pub fn script_already_has_require(&self, script: &Script) -> bool {
+        // TODO(bengl) This is a bit of a pain. All we're trying to do is see if we've already
+        // required tracingChannel. Maybe we can just keep track of it in a weak set containing script
+        // references? I dunno.
+        let first = script.body.first().unwrap();
+        if let Some(first) = first.as_decl() {
+            if let Decl::Var(var_decl) = first {
+                let first_decl = var_decl.decls.first().unwrap();
+                match &first_decl.name {
+                    Pat::Object(obj) => {
+                        let first_prop = obj.props.first().unwrap();
+                        match first_prop {
+                            ObjectPatProp::KeyValue(kv) => {
+                                if let Some(ident) = kv.value.as_ident() {
+                                    return ident.sym == ident!("tr_ch_apm_tracingChannel").sym;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    _ => {},
+                };
+            }
+        }
+        false
+    }
 }
 
 impl VisitMut for Instrumentation {
     fn visit_mut_module(&mut self, node: &mut Module) {
-        let import = ImportDecl {
-            span: Span::default(),
-            specifiers: vec![ImportSpecifier::Named(ImportNamedSpecifier {
-                is_type_only: false,
+        if !self.module_already_has_import(node) {
+            let import = ImportDecl {
                 span: Span::default(),
-                local: ident!("tr_ch_apm_tracingChannel"),
-                imported: Some(ModuleExportName::Ident(ident!("tracingChannel"))),
-            })],
-            src: Box::new(Str::from("diagnostics_channel")),
-            type_only: false,
-            with: None,
-            phase: Default::default(),
-        };
-        node.body.insert(0, ModuleItem::ModuleDecl(import.into()));
+                specifiers: vec![ImportSpecifier::Named(ImportNamedSpecifier {
+                    is_type_only: false,
+                    span: Span::default(),
+                    local: ident!("tr_ch_apm_tracingChannel"),
+                    imported: Some(ModuleExportName::Ident(ident!("tracingChannel"))),
+                })],
+                src: Box::new(Str::from("diagnostics_channel")),
+                type_only: false,
+                with: None,
+                phase: Default::default(),
+            };
+            node.body.insert(0, ModuleItem::ModuleDecl(import.into()));
+        }
         node.body
             .insert(1, ModuleItem::Stmt(self.create_tracing_channel()));
         node.visit_mut_children_with(self);
     }
 
     fn visit_mut_script(&mut self, node: &mut Script) {
-        node.body.insert(0, quote!(
-            "const { tracingChannel: tr_ch_apm_tracingChannel } = require('diagnostics_channel');" as Stmt,
-        ));
+        if !self.script_already_has_require(node) {
+            node.body.insert(0, quote!(
+                "const { tracingChannel: tr_ch_apm_tracingChannel } = require('diagnostics_channel');" as Stmt,
+            ));
+        }
         node.body.insert(1, self.create_tracing_channel());
         node.visit_mut_children_with(self);
     }
@@ -143,6 +187,18 @@ impl VisitMut for Instrumentation {
                     }
                 }
             }
+        }
+    }
+
+    fn visit_mut_class_method(&mut self, node: &mut ClassMethod) {
+        let name = match &node.key {
+            PropName::Ident(ident) => ident.sym.clone(),
+            _ => return,
+        };
+        if self.config.function_query.matches_class_method(node, self.count, &name.to_string()) {
+            self.insert_tracing(&mut node.function.body);
+        } else {
+            self.count += 1;
         }
     }
 
