@@ -114,8 +114,14 @@ impl TryFrom<&Yaml> for FunctionQuery {
 
         Ok(FunctionQuery {
             name: name.to_string(),
-            typ: FunctionType::from_str(typ).unwrap(),
-            kind: FunctionKind::from_str(kind).unwrap(),
+            typ: FunctionType::from_str(typ).ok_or(format!(
+                "Invalid config: 'type' must be one of 'decl', 'expr', or 'method', got '{}'",
+                typ
+            ))?,
+            kind: FunctionKind::from_str(kind).ok_or(format!(
+                "Invalid config: 'kind' must be one of 'sync', 'async', 'generator', or 'async generator', got '{}'",
+                kind
+            ))?,
             index,
         })
     }

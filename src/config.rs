@@ -62,7 +62,7 @@ pub struct InstrumentationConfig {
 
 impl InstrumentationConfig {
     pub fn from_yaml_data(yaml_str: &str) -> Result<Vec<InstrumentationConfig>, String> {
-        let docs = YamlLoader::load_from_str(yaml_str).unwrap();
+        let docs = YamlLoader::load_from_str(yaml_str).map_err(|e| e.to_string())?;
         let doc = &docs[0];
 
         let version = doc["version"]
@@ -86,7 +86,10 @@ impl InstrumentationConfig {
     }
 
     pub fn matches(&self, module_name: &str, version: &str, file_path: &PathBuf) -> bool {
-        let version: Version = version.parse().unwrap();
+        let version: Version = match version.parse() {
+            Ok(v) => v,
+            Err(_) => return false,
+        };
         self.module_name == module_name
             && version.satisfies(&self.version_range)
             && self.file_path == *file_path

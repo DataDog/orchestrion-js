@@ -107,10 +107,9 @@ impl Instrumentation {
     }
 
     pub fn module_already_has_import(&self, module: &Module) -> bool {
-        let first = module.body.first().unwrap();
-        if let ModuleItem::ModuleDecl(ModuleDecl::Import(import)) = first {
-            let spec = import.specifiers.first().unwrap();
-            if let ImportSpecifier::Named(named) = spec {
+        let first = module.body.first();
+        if let Some(ModuleItem::ModuleDecl(ModuleDecl::Import(import))) = first {
+            if let Some(ImportSpecifier::Named(named)) = import.specifiers.first() {
                 return named.local.sym == ident!("tr_ch_apm_tracingChannel").sym;
             }
         }
@@ -121,14 +120,15 @@ impl Instrumentation {
         // TODO(bengl) This is a bit of a pain. All we're trying to do is see if we've already
         // required tracingChannel. Maybe we can just keep track of it in a weak set containing script
         // references? I dunno.
-        let first = script.body.get(start_index).unwrap();
-        if let Some(Decl::Var(var_decl)) = first.as_decl() {
-            let first_decl = var_decl.decls.first().unwrap();
-            if let Pat::Object(obj) = &first_decl.name {
-                let first_prop = obj.props.first().unwrap();
-                if let ObjectPatProp::KeyValue(kv) = first_prop {
-                    if let Some(ident) = kv.value.as_ident() {
-                        return ident.sym == ident!("tr_ch_apm_tracingChannel").sym;
+        if let Some(first) = script.body.get(start_index) {
+            if let Some(Decl::Var(var_decl)) = first.as_decl() {
+                if let Some(first_decl) = var_decl.decls.first() {
+                    if let Pat::Object(obj) = &first_decl.name {
+                        if let Some(ObjectPatProp::KeyValue(kv)) = obj.props.first() {
+                            if let Some(ident) = kv.value.as_ident() {
+                                return ident.sym == ident!("tr_ch_apm_tracingChannel").sym;
+                            }
+                        }
                     }
                 }
             }
@@ -138,7 +138,7 @@ impl Instrumentation {
 
     /// If the script starts with a "use strict" directive, we need to skip it when inserting there
     fn get_script_start_index(&self, script: &Script) -> usize {
-        if let Stmt::Expr(expr) = script.body.first().unwrap() {
+        if let Some(Stmt::Expr(expr)) = script.body.first() {
             if let Some(Lit::Str(str_lit)) = expr.expr.as_lit() {
                 if str_lit.value == "use strict" {
                     return 1;
