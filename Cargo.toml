@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib"]
+# crate-type = ["cdylib"]
+# This was originally set as above, but commented to run tests in tests folder.
+
 
 [profile.release]
 lto = true
