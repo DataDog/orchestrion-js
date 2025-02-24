@@ -83,7 +83,7 @@ impl Instrumentation {
         ];
     }
 
-    fn trace_expr_or_count(&mut self, func_expr: &mut FnExpr, name: &Atom) -> bool{
+    fn trace_expr_or_count(&mut self, func_expr: &mut FnExpr, name: &Atom) -> bool {
         if self
             .config
             .function_query
@@ -117,11 +117,11 @@ impl Instrumentation {
         false
     }
 
-    pub fn script_already_has_require(&self, script: &Script) -> bool {
+    pub fn script_already_has_require(&self, script: &Script, start_index: usize) -> bool {
         // TODO(bengl) This is a bit of a pain. All we're trying to do is see if we've already
         // required tracingChannel. Maybe we can just keep track of it in a weak set containing script
         // references? I dunno.
-        let first = script.body.first().unwrap();
+        let first = script.body.get(start_index).unwrap();
         if let Some(Decl::Var(var_decl)) = first.as_decl() {
             let first_decl = var_decl.decls.first().unwrap();
             if let Pat::Object(obj) = &first_decl.name {
@@ -134,6 +134,18 @@ impl Instrumentation {
             }
         }
         false
+    }
+
+    /// If the script starts with a "use strict" directive, we need to skip it when inserting there
+    fn get_script_start_index(&self, script: &Script) -> usize {
+        if let Stmt::Expr(expr) = script.body.first().unwrap() {
+            if let Some(Lit::Str(str_lit)) = expr.expr.as_lit() {
+                if str_lit.value == "use strict" {
+                    return 1;
+                }
+            }
+        }
+        0
     }
 }
 
@@ -161,12 +173,14 @@ impl VisitMut for Instrumentation {
     }
 
     fn visit_mut_script(&mut self, node: &mut Script) {
-        if !self.script_already_has_require(node) {
-            node.body.insert(0, quote!(
+        let start_index = self.get_script_start_index(node);
+        if !self.script_already_has_require(node, start_index) {
+            node.body.insert(start_index, quote!(
                 "const { tracingChannel: tr_ch_apm_tracingChannel } = require('diagnostics_channel');" as Stmt,
             ));
         }
-        node.body.insert(1, self.create_tracing_channel());
+        node.body
+            .insert(start_index + 1, self.create_tracing_channel());
         node.visit_mut_children_with(self);
     }
 
@@ -217,7 +231,7 @@ impl VisitMut for Instrumentation {
             self.count += 1;
         }
     }
-    
+
     fn visit_mut_method_prop(&mut self, node: &mut MethodProp) {
         let name = match &node.key {
             PropName::Ident(ident) => ident.sym.clone(),
@@ -233,8 +247,8 @@ impl VisitMut for Instrumentation {
                 .body
                 .as_mut()
                 .map(|body| self.insert_tracing(body));
-            } else {
-                self.count += 1;
+        } else {
+            self.count += 1;
         }
     }
 
@@ -256,7 +270,6 @@ impl VisitMut for Instrumentation {
                 match &node {
                     SimpleAssignTarget::Ident(name) => {
                         traced = self.trace_expr_or_count(func_expr, &name.id.sym);
-                        
                     }
                     SimpleAssignTarget::Member(member) => {
                         if let MemberProp::Ident(ident) = &member.prop {
