@@ -82,7 +82,7 @@ fn transpile(
     .unwrap()
 }
 
-pub fn init_instrumentor(typ: &str) -> Instrumentor {
+pub fn init_instrumentor() -> Instrumentor {
     let yaml = include_str!("./instrumentations.yml");
     yaml.parse().unwrap()
 }
