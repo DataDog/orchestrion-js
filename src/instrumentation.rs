@@ -30,10 +30,10 @@ impl Instrumentation {
         Self { config, count: 0 }
     }
 
-    fn new_fn(&self, body: Option<BlockStmt>) -> ArrowExpr {
+    fn new_fn(&self, body: BlockStmt) -> ArrowExpr {
         ArrowExpr {
             params: vec![],
-            body: Box::new(body.unwrap().into()),
+            body: Box::new(body.into()),
             is_async: self.config.function_query.kind.is_async(),
             is_generator: self.config.function_query.kind.is_generator(),
             type_params: None,
@@ -62,7 +62,7 @@ impl Instrumentation {
         define_channel
     }
 
-    fn insert_tracing(&self, body: &mut Option<BlockStmt>) {
+    fn insert_tracing(&self, body: &mut BlockStmt) {
         let ch_ident = ident!(format!("tr_ch_apm${}", self.config.channel_name));
         let trace_ident = ident!(format!(
             "tr_ch_apm${}.{}",
@@ -70,7 +70,7 @@ impl Instrumentation {
             self.config.operator.clone().as_str()
         ));
         let traced_fn = self.new_fn(body.clone());
-        body.as_mut().unwrap().stmts = vec![
+        body.stmts = vec![
             quote!("const traced = $traced;" as Stmt, traced: Expr = traced_fn.into()),
             quote!(
                 "if (!$ch.hasSubscribers) return traced();" as Stmt,
@@ -88,8 +88,13 @@ impl Instrumentation {
             .config
             .function_query
             .matches_expr(func_expr, self.count, name.as_ref())
+            && func_expr.function.body.is_some()
         {
-            self.insert_tracing(&mut func_expr.function.body);
+            func_expr
+                .function
+                .body
+                .as_mut()
+                .map(|body| self.insert_tracing(body));
         } else {
             self.count += 1;
         }
@@ -164,8 +169,12 @@ impl VisitMut for Instrumentation {
     }
 
     fn visit_mut_fn_decl(&mut self, node: &mut FnDecl) {
-        if self.config.function_query.matches_decl(node, self.count) {
-            self.insert_tracing(&mut node.function.body);
+        if self.config.function_query.matches_decl(node, self.count) && node.function.body.is_some()
+        {
+            node.function
+                .body
+                .as_mut()
+                .map(|body| self.insert_tracing(body));
         } else {
             self.count += 1;
         }
@@ -192,8 +201,12 @@ impl VisitMut for Instrumentation {
             .config
             .function_query
             .matches_class_method(node, self.count, name.as_ref())
+            && node.function.body.is_some()
         {
-            self.insert_tracing(&mut node.function.body);
+            node.function
+                .body
+                .as_mut()
+                .map(|body| self.insert_tracing(body));
         } else {
             self.count += 1;
         }
@@ -227,6 +240,4 @@ impl VisitMut for Instrumentation {
             }
         }
     }
-
-    // TODO(bengl) Support class methods
 }

@@ -3,7 +3,7 @@ use yaml_rust2::Yaml;
 
 macro_rules! get_str {
     ($property:expr, $name:expr) => {
-        $property
+        $property[$name]
             .as_str()
             .ok_or(format!("Invalid config: '{}' must be a string", $name))?
     };
@@ -100,9 +100,9 @@ impl TryFrom<&Yaml> for FunctionQuery {
     type Error = String;
 
     fn try_from(query: &Yaml) -> Result<Self, Self::Error> {
-        let typ = get_str!(query["type"], "type");
-        let kind = get_str!(query["kind"], "kind");
-        let name = get_str!(query["name"], "name");
+        let typ = get_str!(query, "type");
+        let kind = get_str!(query, "kind");
+        let name = get_str!(query, "name");
         let index = query["index"].as_i64().unwrap_or(0) as usize;
 
         Ok(FunctionQuery {

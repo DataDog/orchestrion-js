@@ -8,7 +8,7 @@ use yaml_rust2::{Yaml, YamlLoader};
 
 macro_rules! get_str {
     ($property:expr, $name:expr) => {
-        $property
+        $property[$name]
             .as_str()
             .ok_or(format!("Invalid config: '{}' must be a string", $name))?
     };
@@ -16,7 +16,7 @@ macro_rules! get_str {
 
 macro_rules! get_arr {
     ($property:expr, $name:expr) => {
-        $property
+        $property[$name]
             .as_vec()
             .ok_or(format!("Invalid config: '{}' must be a array", $name))?
     };
@@ -65,19 +65,20 @@ impl InstrumentationConfig {
         let docs = YamlLoader::load_from_str(yaml_str).unwrap();
         let doc = &docs[0];
 
-        if doc["version"].as_i64().unwrap() != 1 {
+        let version = doc["version"]
+            .as_i64()
+            .ok_or("Invalid config: 'version' must be a number")?;
+        if version != 1 {
             return Err("Invalid config version".to_string());
         }
 
-        let instrumentations = get_arr!(doc["instrumentations"], "instrumentations");
+        let instrumentations = get_arr!(doc, "instrumentations");
         let mut configs = Vec::new();
 
         for instr in instrumentations {
-            if instr.as_hash().is_none() {
-                return Err(
-                    "Invalid config: 'instrumentations' must be a array of objects".to_string(),
-                );
-            }
+            instr
+                .as_hash()
+                .ok_or("Invalid config: 'instrumentations' must be a array of objects")?;
             configs.push(instr.try_into()?);
         }
 
@@ -96,19 +97,19 @@ impl TryFrom<&Yaml> for InstrumentationConfig {
     type Error = String;
 
     fn try_from(instr: &Yaml) -> Result<Self, Self::Error> {
-        let module_name = get_str!(instr["module_name"], "module_name");
-        let version_range = get_str!(instr["version_range"], "version_range");
+        let module_name = get_str!(instr, "module_name");
+        let version_range = get_str!(instr, "version_range");
         let version_range: Range = version_range
             .parse()
             .map_err(|_| format!("Invalid version range: {}", version_range))?;
-        let file_path = PathBuf::from(get_str!(instr["file_path"], "file_path"));
+        let file_path = PathBuf::from(get_str!(instr, "file_path"));
         if instr["function_query"].as_hash().is_none() {
             return Err("Invalid config: 'function_query' must be a object".to_string());
         }
         let function_query = (&instr["function_query"]).try_into()?;
-        let operator = InstrumentationOperator::from_str(get_str!(instr["operator"], "operator"))
+        let operator = InstrumentationOperator::from_str(get_str!(instr, "operator"))
             .unwrap_or(InstrumentationOperator::Sync);
-        let channel_name = get_str!(instr["channel_name"], "channel_name");
+        let channel_name = get_str!(instr, "channel_name");
 
         Ok(InstrumentationConfig {
             module_name: module_name.to_string(),
