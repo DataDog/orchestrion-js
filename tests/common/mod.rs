@@ -15,6 +15,7 @@ use swc_ecma_parser::{EsSyntax, Syntax};
 use swc_ecma_visit::VisitMutWith;
 
 fn print_result(original: &str, modified: &str) {
+    return;
     println!(
         "\n - == === Original === == - \n{}\n\n\n - == === Modified === == - \n{}\n\n",
         original, modified

@@ -94,6 +94,13 @@ impl FunctionQuery {
             && name == self.name
             && count == self.index
     }
+
+    pub fn matches_method_prop(&self, func: &MethodProp, count: usize, name: &str) -> bool {
+        matches!(self.typ, FunctionType::Method)
+            && self.kind.matches(&func.function)
+            && name == self.name
+            && count == self.index
+    }
 }
 
 impl TryFrom<&Yaml> for FunctionQuery {

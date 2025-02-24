@@ -83,7 +83,7 @@ impl Instrumentation {
         ];
     }
 
-    fn trace_expr_or_count(&mut self, func_expr: &mut FnExpr, name: &Atom) {
+    fn trace_expr_or_count(&mut self, func_expr: &mut FnExpr, name: &Atom) -> bool{
         if self
             .config
             .function_query
@@ -95,8 +95,10 @@ impl Instrumentation {
                 .body
                 .as_mut()
                 .map(|body| self.insert_tracing(body));
+            true
         } else {
             self.count += 1;
+            false
         }
     }
 
@@ -181,14 +183,18 @@ impl VisitMut for Instrumentation {
     }
 
     fn visit_mut_var_decl(&mut self, node: &mut VarDecl) {
+        let mut traced = false;
         for decl in &mut node.decls {
             if let Some(init) = &mut decl.init {
                 if let Some(func_expr) = init.as_mut_fn_expr() {
                     if let Pat::Ident(name) = &decl.name {
-                        self.trace_expr_or_count(func_expr, &name.id.sym);
+                        traced = self.trace_expr_or_count(func_expr, &name.id.sym);
                     }
                 }
             }
+        }
+        if !traced {
+            node.visit_mut_children_with(self);
         }
     }
 
@@ -211,6 +217,26 @@ impl VisitMut for Instrumentation {
             self.count += 1;
         }
     }
+    
+    fn visit_mut_method_prop(&mut self, node: &mut MethodProp) {
+        let name = match &node.key {
+            PropName::Ident(ident) => ident.sym.clone(),
+            _ => return,
+        };
+        if self
+            .config
+            .function_query
+            .matches_method_prop(node, self.count, name.as_ref())
+            && node.function.body.is_some()
+        {
+            node.function
+                .body
+                .as_mut()
+                .map(|body| self.insert_tracing(body));
+            } else {
+                self.count += 1;
+        }
+    }
 
     fn visit_mut_assign_expr(&mut self, node: &mut AssignExpr) {
         // TODO(bengl) This is by far the hardest bit. We're trying to infer a name for this
@@ -224,20 +250,25 @@ impl VisitMut for Instrumentation {
         // What's covered is:
         // - Simple assignment to an already-declared variable
         // - Simple assignment to a property of an object
+        let mut traced = false;
         if let Some(func_expr) = node.right.as_mut_fn_expr() {
             if let AssignTarget::Simple(node) = &mut node.left {
                 match &node {
                     SimpleAssignTarget::Ident(name) => {
-                        self.trace_expr_or_count(func_expr, &name.id.sym);
+                        traced = self.trace_expr_or_count(func_expr, &name.id.sym);
+                        
                     }
                     SimpleAssignTarget::Member(member) => {
                         if let MemberProp::Ident(ident) = &member.prop {
-                            self.trace_expr_or_count(func_expr, &ident.sym);
+                            traced = self.trace_expr_or_count(func_expr, &ident.sym);
                         }
                     }
                     _ => {}
                 }
             }
+        }
+        if !traced {
+            node.right.visit_mut_children_with(self);
         }
     }
 }
