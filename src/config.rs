@@ -98,7 +98,9 @@ impl TryFrom<&Yaml> for InstrumentationConfig {
     fn try_from(instr: &Yaml) -> Result<Self, Self::Error> {
         let module_name = get_str!(instr["module_name"], "module_name");
         let version_range = get_str!(instr["version_range"], "version_range");
-        let version_range: Range = version_range.parse().map_err(|_| format!("Invalid version range: {}", version_range))?;
+        let version_range: Range = version_range
+            .parse()
+            .map_err(|_| format!("Invalid version range: {}", version_range))?;
         let file_path = PathBuf::from(get_str!(instr["file_path"], "file_path"));
         if instr["function_query"].as_hash().is_none() {
             return Err("Invalid config: 'function_query' must be a object".to_string());

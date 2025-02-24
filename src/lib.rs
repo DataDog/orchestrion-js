@@ -1,5 +1,5 @@
 //! # Orchestrion
-//! Orchestrion is a library for instrumenting Node.js libraries at build or load time. 
+//! Orchestrion is a library for instrumenting Node.js libraries at build or load time.
 //! It provides [`VisitMut`] implementations for SWC's AST nodes, which can be used to insert
 //! tracing code into matching functions. It's entirely configurable via a YAML string, and can be
 //! used in SWC plugins, or anything else that mutates JavaScript ASTs using SWC.
@@ -46,9 +46,7 @@ impl Instrumentor {
     ) -> Vec<&mut Instrumentation> {
         self.instrumentations
             .iter_mut()
-            .filter(|instr| {
-                instr.matches(module_name, version, file_path)
-            })
+            .filter(|instr| instr.matches(module_name, version, file_path))
             .collect()
     }
 }
@@ -64,7 +62,10 @@ impl FromStr for Instrumentor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use assert_cmd::prelude::*;
+    use std::io::prelude::*;
     use std::path::PathBuf;
+    use std::process::Command;
     use std::sync::Arc;
     use swc::{
         config::{IsModule, SourceMapsConfig},
@@ -74,13 +75,13 @@ mod tests {
     use swc_core::ecma::ast::EsVersion;
     use swc_ecma_parser::{EsSyntax, Syntax};
     use swc_ecma_visit::VisitMutWith;
-    use std::process::Command;
-    use std::io::prelude::*;
-    use assert_cmd::prelude::*;
     use tempfile;
 
     fn print_result(original: &str, modified: &str) {
-        println!("\n - == === Original === == - \n{}\n\n\n - == === Modified === == - \n{}\n\n", original, modified);
+        println!(
+            "\n - == === Original === == - \n{}\n\n\n - == === Modified === == - \n{}\n\n",
+            original, modified
+        );
     }
 
     fn transpile(
@@ -145,7 +146,8 @@ mod tests {
     }
 
     fn init_instrumentor(typ: &str) -> Instrumentor {
-        let yaml = format!(r#"
+        let yaml = format!(
+            r#"
 version: 1
 instrumentations:
   - module_name: undici
@@ -178,7 +180,9 @@ instrumentations:
       index: 0
     operator: tracePromise
     channel_name: runnablesequence_batch
-"#, typ);
+"#,
+            typ
+        );
         yaml.parse().unwrap()
     }
 
@@ -197,7 +201,8 @@ instrumentations:
             .stdout(std::process::Stdio::inherit())
             .stderr(std::process::Stdio::inherit())
             .arg(&test_file)
-            .assert().success();
+            .assert()
+            .success();
     }
 
     fn get_test_code(channel: &str, test_code: &str, mjs: bool) -> String {
@@ -206,7 +211,8 @@ instrumentations:
         } else {
             "const { tracingChannel } = require('diagnostics_channel'); const assert = require('assert');"
         };
-        format!(r#"
+        format!(
+            r#"
 {}
 const channel = tracingChannel('{}');
 const context = {{}};
@@ -229,10 +235,18 @@ channel.subscribe({{
 }});
 // Test code
 {}
-"#, imports, channel, test_code)
+"#,
+            imports, channel, test_code
+        )
     }
 
-    fn transpile_and_test(channel: &str, mjs: bool, instrumentations: Vec<&mut Instrumentation>, contents: &str, test_code: &str) {
+    fn transpile_and_test(
+        channel: &str,
+        mjs: bool,
+        instrumentations: Vec<&mut Instrumentation>,
+        contents: &str,
+        test_code: &str,
+    ) {
         let result = transpile(contents, IsModule::Bool(mjs), instrumentations);
         let all_test_code = get_test_code(channel, test_code, mjs);
         run_with_node(&all_test_code, &result, mjs);
@@ -246,7 +260,7 @@ channel.subscribe({{
             "0.0.1",
             &PathBuf::from("index.mjs"),
         );
- 
+
         let contents = "export async function fetch(url) { return 42; }";
         let test_code = r#"
 import { fetch } from './instrumented.mjs';
@@ -259,9 +273,15 @@ assert.deepStrictEqual(context, {
   asyncEnd: 42
 });
         "#;
-        transpile_and_test("orchestrion:undici:fetch", true, instrumentations, contents, test_code);
+        transpile_and_test(
+            "orchestrion:undici:fetch",
+            true,
+            instrumentations,
+            contents,
+            test_code,
+        );
     }
- 
+
     #[test]
     fn decl_cjs() {
         let mut instrumentor = init_instrumentor("decl");
@@ -270,7 +290,7 @@ assert.deepStrictEqual(context, {
             "0.0.1",
             &PathBuf::from("index.mjs"),
         );
- 
+
         let contents = "async function fetch(url) { return 42; }\nmodule.exports = { fetch };";
         let test_code = r#"
 const { fetch } = require('./instrumented.js');
@@ -285,19 +305,25 @@ const { fetch } = require('./instrumented.js');
   });
 })();
         "#;
-        transpile_and_test("orchestrion:undici:fetch", false, instrumentations, contents, test_code);
+        transpile_and_test(
+            "orchestrion:undici:fetch",
+            false,
+            instrumentations,
+            contents,
+            test_code,
+        );
     }
- 
+
     #[test]
     fn expr_mjs() {
         let mut instrumentor = init_instrumentor("expr");
- 
+
         let instrumentations = instrumentor.get_matching_instrumentations(
             "undici",
             "0.0.1",
             &PathBuf::from("index.mjs"),
         );
- 
+
         let contents = "const fetch = async function (url) { return 42; }; export { fetch };";
         let test_code = r#"
 import { fetch } from './instrumented.mjs';
@@ -310,7 +336,13 @@ assert.deepStrictEqual(context, {
   asyncEnd: 42
 });
         "#;
-        transpile_and_test("orchestrion:undici:fetch", true, instrumentations, contents, test_code);
+        transpile_and_test(
+            "orchestrion:undici:fetch",
+            true,
+            instrumentations,
+            contents,
+            test_code,
+        );
     }
 
     #[test]
@@ -337,7 +369,13 @@ const { fetch } = require('./instrumented.js');
   });
 })();
         "#;
-        transpile_and_test("orchestrion:undici:fetch", false, instrumentations, contents, test_code);
+        transpile_and_test(
+            "orchestrion:undici:fetch",
+            false,
+            instrumentations,
+            contents,
+            test_code,
+        );
     }
 
     #[test]
@@ -373,6 +411,12 @@ const Undici = require('./instrumented.js');
   });
 })();
         "#;
-        transpile_and_test("orchestrion:undici:Undici_fetch", false, instrumentations, contents, test_code);
+        transpile_and_test(
+            "orchestrion:undici:Undici_fetch",
+            false,
+            instrumentations,
+            contents,
+            test_code,
+        );
     }
 }

@@ -1,5 +1,5 @@
-use yaml_rust2::Yaml;
 use swc_core::ecma::ast::*;
+use yaml_rust2::Yaml;
 
 macro_rules! get_str {
     ($property:expr, $name:expr) => {
@@ -62,8 +62,6 @@ impl FunctionKind {
     }
 }
 
-
-
 pub struct FunctionQuery {
     pub name: String,
     pub typ: FunctionType,
@@ -73,7 +71,7 @@ pub struct FunctionQuery {
 
 impl FunctionQuery {
     pub fn matches_decl(&self, func: &FnDecl, count: usize) -> bool {
-        // TODO(bengl) check if it's only the count that's wrong, and somehow 
+        // TODO(bengl) check if it's only the count that's wrong, and somehow
         // signal that so we can update the counter.
         matches!(self.typ, FunctionType::FunctionDeclaration)
             && self.kind.matches(&func.function)
@@ -82,7 +80,7 @@ impl FunctionQuery {
     }
 
     pub fn matches_expr(&self, func: &FnExpr, count: usize, name: &str) -> bool {
-        // TODO(bengl) check if it's only the count that's wrong, and somehow 
+        // TODO(bengl) check if it's only the count that's wrong, and somehow
         // signal that so we can update the counter.
         matches!(self.typ, FunctionType::FunctionExpression)
             && self.kind.matches(&func.function)

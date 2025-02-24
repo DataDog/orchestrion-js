@@ -1,10 +1,10 @@
-use std::path::PathBuf;
 use crate::config::InstrumentationConfig;
+use std::path::PathBuf;
 use swc_core::common::{Span, SyntaxContext};
 use swc_core::ecma::{
     ast::*,
-    visit::{VisitMut, VisitMutWith},
     atoms::Atom,
+    visit::{VisitMut, VisitMutWith},
 };
 use swc_core::quote;
 
@@ -84,12 +84,15 @@ impl Instrumentation {
     }
 
     fn trace_expr_or_count(&mut self, func_expr: &mut FnExpr, name: &Atom) {
-        if self.config.function_query.matches_expr(func_expr, self.count, &name.to_string()) {
+        if self
+            .config
+            .function_query
+            .matches_expr(func_expr, self.count, name.as_ref())
+        {
             self.insert_tracing(&mut func_expr.function.body);
         } else {
             self.count += 1;
         }
-
     }
 
     pub fn matches(&self, module_name: &str, version: &str, file_path: &PathBuf) -> bool {
@@ -98,12 +101,10 @@ impl Instrumentation {
 
     pub fn module_already_has_import(&self, module: &Module) -> bool {
         let first = module.body.first().unwrap();
-        if let ModuleItem::ModuleDecl(decl) = first {
-            if let ModuleDecl::Import(import) = decl {
-                let spec = import.specifiers.first().unwrap();
-                if let ImportSpecifier::Named(named) = spec {
-                    return named.local.sym == ident!("tr_ch_apm_tracingChannel").sym;
-                }
+        if let ModuleItem::ModuleDecl(ModuleDecl::Import(import)) = first {
+            let spec = import.specifiers.first().unwrap();
+            if let ImportSpecifier::Named(named) = spec {
+                return named.local.sym == ident!("tr_ch_apm_tracingChannel").sym;
             }
         }
         false
@@ -114,23 +115,15 @@ impl Instrumentation {
         // required tracingChannel. Maybe we can just keep track of it in a weak set containing script
         // references? I dunno.
         let first = script.body.first().unwrap();
-        if let Some(first) = first.as_decl() {
-            if let Decl::Var(var_decl) = first {
-                let first_decl = var_decl.decls.first().unwrap();
-                match &first_decl.name {
-                    Pat::Object(obj) => {
-                        let first_prop = obj.props.first().unwrap();
-                        match first_prop {
-                            ObjectPatProp::KeyValue(kv) => {
-                                if let Some(ident) = kv.value.as_ident() {
-                                    return ident.sym == ident!("tr_ch_apm_tracingChannel").sym;
-                                }
-                            }
-                            _ => {}
-                        }
+        if let Some(Decl::Var(var_decl)) = first.as_decl() {
+            let first_decl = var_decl.decls.first().unwrap();
+            if let Pat::Object(obj) = &first_decl.name {
+                let first_prop = obj.props.first().unwrap();
+                if let ObjectPatProp::KeyValue(kv) = first_prop {
+                    if let Some(ident) = kv.value.as_ident() {
+                        return ident.sym == ident!("tr_ch_apm_tracingChannel").sym;
                     }
-                    _ => {},
-                };
+                }
             }
         }
         false
@@ -195,7 +188,11 @@ impl VisitMut for Instrumentation {
             PropName::Ident(ident) => ident.sym.clone(),
             _ => return,
         };
-        if self.config.function_query.matches_class_method(node, self.count, &name.to_string()) {
+        if self
+            .config
+            .function_query
+            .matches_class_method(node, self.count, name.as_ref())
+        {
             self.insert_tracing(&mut node.function.body);
         } else {
             self.count += 1;
@@ -219,15 +216,12 @@ impl VisitMut for Instrumentation {
                 match &node {
                     SimpleAssignTarget::Ident(name) => {
                         self.trace_expr_or_count(func_expr, &name.id.sym);
-                    },
+                    }
                     SimpleAssignTarget::Member(member) => {
-                        match &member.prop {
-                            MemberProp::Ident(ident) => {
-                                self.trace_expr_or_count(func_expr, &ident.sym);
-                            },
-                            _ => {}
+                        if let MemberProp::Ident(ident) = &member.prop {
+                            self.trace_expr_or_count(func_expr, &ident.sym);
                         }
-                    },
+                    }
                     _ => {}
                 }
             }
