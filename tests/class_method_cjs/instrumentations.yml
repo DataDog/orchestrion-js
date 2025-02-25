@@ -1,0 +1,12 @@
+version: 1
+instrumentations:
+  - module_name: undici
+    version_range: ">=0.0.1"
+    file_path: index.mjs
+    function_query:
+      name: fetch
+      type: method
+      kind: async
+      index: 0
+    operator: tracePromise
+    channel_name: Undici_fetch

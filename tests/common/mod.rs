@@ -82,8 +82,10 @@ fn transpile(
     .unwrap()
 }
 
-pub fn init_instrumentor() -> Instrumentor {
-    let yaml = include_str!("./instrumentations.yml");
+pub fn init_instrumentor(test_name: &str) -> Instrumentor {
+    let mut file = get_dir(test_name);
+    file.push("instrumentations.yml");
+    let yaml = std::fs::read_to_string(file).unwrap();
     yaml.parse().unwrap()
 }
 

@@ -60,8 +60,13 @@ pub struct InstrumentationConfig {
     pub channel_name: String,
 }
 
-impl InstrumentationConfig {
-    pub fn from_yaml_data(yaml_str: &str) -> Result<Vec<InstrumentationConfig>, String> {
+pub struct Config {
+    pub instrumentations: Vec<InstrumentationConfig>,
+    pub dc_module: String,
+}
+
+impl Config {
+    pub fn from_yaml_data(yaml_str: &str) -> Result<Config, String> {
         let docs = YamlLoader::load_from_str(yaml_str).map_err(|e| e.to_string())?;
         let doc = &docs[0];
 
@@ -72,6 +77,19 @@ impl InstrumentationConfig {
             return Err("Invalid config version".to_string());
         }
 
+        let dc_module = doc["dc_module"].as_str().unwrap_or("diagnostics_channel");
+
+        let configs = InstrumentationConfig::from_yaml(doc)?;
+
+        Ok(Config {
+            instrumentations: configs,
+            dc_module: dc_module.to_string(),
+        })
+    }
+}
+
+impl InstrumentationConfig {
+    pub fn from_yaml(doc: &Yaml) -> Result<Vec<InstrumentationConfig>, String> {
         let instrumentations = get_arr!(doc, "instrumentations");
         let mut configs = Vec::new();
 

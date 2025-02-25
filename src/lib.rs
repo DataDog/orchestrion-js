@@ -27,11 +27,11 @@ pub struct Instrumentor {
 }
 
 impl Instrumentor {
-    fn new(instrumentations: Vec<InstrumentationConfig>) -> Self {
+    fn new(instrumentations: Vec<InstrumentationConfig>, dc_module: String) -> Self {
         Self {
             instrumentations: instrumentations
                 .into_iter()
-                .map(Instrumentation::new)
+                .map(|inst| Instrumentation::new(inst, dc_module.clone()))
                 .collect(),
         }
     }
@@ -55,6 +55,6 @@ impl FromStr for Instrumentor {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self::new(InstrumentationConfig::from_yaml_data(s)?))
+        Config::from_yaml_data(s).map(|c| Self::new(c.instrumentations, c.dc_module))
     }
 }

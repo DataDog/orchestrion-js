@@ -22,12 +22,18 @@ macro_rules! ident {
 /// [`VisitMut`]: https://rustdoc.swc.rs/swc_core/ecma/visit/trait.VisitMut.html
 pub struct Instrumentation {
     config: InstrumentationConfig,
+    dc_module: String,
     count: usize,
 }
 
 impl Instrumentation {
-    pub(crate) fn new(config: InstrumentationConfig) -> Self {
-        Self { config, count: 0 }
+    pub(crate) fn new(config: InstrumentationConfig, dc_module: String) -> Self {
+        println!("Creating new instrumentation: {:?}", dc_module);
+        Self {
+            config,
+            dc_module,
+            count: 0,
+        }
     }
 
     fn new_fn(&self, body: BlockStmt) -> ArrowExpr {
@@ -160,7 +166,7 @@ impl VisitMut for Instrumentation {
                     local: ident!("tr_ch_apm_tracingChannel"),
                     imported: Some(ModuleExportName::Ident(ident!("tracingChannel"))),
                 })],
-                src: Box::new(Str::from("diagnostics_channel")),
+                src: Box::new(Str::from(self.dc_module.clone())),
                 type_only: false,
                 with: None,
                 phase: Default::default(),
@@ -175,9 +181,13 @@ impl VisitMut for Instrumentation {
     fn visit_mut_script(&mut self, node: &mut Script) {
         let start_index = self.get_script_start_index(node);
         if !self.script_already_has_require(node, start_index) {
-            node.body.insert(start_index, quote!(
-                "const { tracingChannel: tr_ch_apm_tracingChannel } = require('diagnostics_channel');" as Stmt,
-            ));
+            node.body.insert(
+                start_index,
+                quote!(
+                    "const { tracingChannel: tr_ch_apm_tracingChannel } = require($dc);" as Stmt,
+                    dc: Expr = self.dc_module.clone().into(),
+                ),
+            );
         }
         node.body
             .insert(start_index + 1, self.create_tracing_channel());
