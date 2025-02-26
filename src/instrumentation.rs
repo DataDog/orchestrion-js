@@ -1,5 +1,7 @@
 use crate::config::InstrumentationConfig;
+use std::collections::HashSet;
 use std::path::PathBuf;
+use std::sync::{LazyLock, RwLock};
 use swc_core::common::{Span, SyntaxContext};
 use swc_core::ecma::{
     ast::*,
@@ -12,6 +14,19 @@ macro_rules! ident {
     ($name:expr) => {
         Ident::new($name.into(), Span::default(), SyntaxContext::empty())
     };
+}
+
+static ADDED_IMPORTS: LazyLock<RwLock<HashSet<usize>>> =
+    LazyLock::new(|| RwLock::new(HashSet::new()));
+
+fn has_imported<T>(t: &T) -> bool {
+    let ptr = t as *const T as usize;
+    ADDED_IMPORTS.read().unwrap().contains(&ptr)
+}
+
+fn add_imported<T>(t: &T) {
+    let ptr = t as *const T as usize;
+    ADDED_IMPORTS.write().unwrap().insert(ptr);
 }
 
 /// An [`Instrumentation`] instance represents a single instrumentation configuration, and implements
@@ -113,33 +128,11 @@ impl Instrumentation {
     }
 
     pub fn module_already_has_import(&self, module: &Module) -> bool {
-        let first = module.body.first();
-        if let Some(ModuleItem::ModuleDecl(ModuleDecl::Import(import))) = first {
-            if let Some(ImportSpecifier::Named(named)) = import.specifiers.first() {
-                return named.local.sym == ident!("tr_ch_apm_tracingChannel").sym;
-            }
-        }
-        false
+        has_imported(module)
     }
 
-    pub fn script_already_has_require(&self, script: &Script, start_index: usize) -> bool {
-        // TODO(bengl) This is a bit of a pain. All we're trying to do is see if we've already
-        // required tracingChannel. Maybe we can just keep track of it in a weak set containing script
-        // references? I dunno.
-        if let Some(first) = script.body.get(start_index) {
-            if let Some(Decl::Var(var_decl)) = first.as_decl() {
-                if let Some(first_decl) = var_decl.decls.first() {
-                    if let Pat::Object(obj) = &first_decl.name {
-                        if let Some(ObjectPatProp::KeyValue(kv)) = obj.props.first() {
-                            if let Some(ident) = kv.value.as_ident() {
-                                return ident.sym == ident!("tr_ch_apm_tracingChannel").sym;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        false
+    pub fn script_already_has_require(&self, script: &Script) -> bool {
+        has_imported(script)
     }
 
     /// If the script starts with a "use strict" directive, we need to skip it when inserting there
@@ -157,7 +150,7 @@ impl Instrumentation {
 
 impl VisitMut for Instrumentation {
     fn visit_mut_module(&mut self, node: &mut Module) {
-        if !self.module_already_has_import(node) {
+        if !has_imported(node) {
             let import = ImportDecl {
                 span: Span::default(),
                 specifiers: vec![ImportSpecifier::Named(ImportNamedSpecifier {
@@ -172,6 +165,7 @@ impl VisitMut for Instrumentation {
                 phase: Default::default(),
             };
             node.body.insert(0, ModuleItem::ModuleDecl(import.into()));
+            add_imported(node);
         }
         node.body
             .insert(1, ModuleItem::Stmt(self.create_tracing_channel()));
@@ -180,7 +174,7 @@ impl VisitMut for Instrumentation {
 
     fn visit_mut_script(&mut self, node: &mut Script) {
         let start_index = self.get_script_start_index(node);
-        if !self.script_already_has_require(node, start_index) {
+        if !has_imported(node) {
             node.body.insert(
                 start_index,
                 quote!(
@@ -188,6 +182,7 @@ impl VisitMut for Instrumentation {
                     dc: Expr = self.dc_module.clone().into(),
                 ),
             );
+            add_imported(node);
         }
         node.body
             .insert(start_index + 1, self.create_tracing_channel());
