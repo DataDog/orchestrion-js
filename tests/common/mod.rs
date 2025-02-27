@@ -94,7 +94,11 @@ fn get_dir(test_name: &str) -> PathBuf {
     dir
 }
 
-pub fn transpile_and_test(test_name: &str, mjs: bool, instrumentations: &mut InstrumentationVisitor) {
+pub fn transpile_and_test(
+    test_name: &str,
+    mjs: bool,
+    instrumentations: &mut InstrumentationVisitor,
+) {
     let dir = get_dir(test_name);
     let extension = if mjs { "mjs" } else { "js" };
     let instrumentable = dir.join(format!("mod.{}", extension));

@@ -14,10 +14,10 @@ lto = true
 [dependencies]
 nodejs-semver = "4.1.0"
 serde = "1"
-swc = "13.0.1"
-swc_core = { version = "13.3.*", features = ["ecma_plugin_transform","ecma_quote"] }
-swc_ecma_parser = "8.0.2"
-swc_ecma_visit = { version = "6.0.0", features = ["path"] }
+swc = "16.1.0"
+swc_core = { version = "16.2.3", features = ["ecma_plugin_transform","ecma_quote"] }
+swc_ecma_parser = "10.0.0"
+swc_ecma_visit = { version = "8.0.0", features = ["path"] }
 yaml-rust2 = "0.10.0"
 
 [dev-dependencies]

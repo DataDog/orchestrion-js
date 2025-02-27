@@ -1,11 +1,9 @@
 use crate::config::InstrumentationConfig;
 use std::path::PathBuf;
 use swc_core::common::{Span, SyntaxContext};
-use swc_core::ecma::{
-    ast::*,
-    atoms::Atom,
-};
+use swc_core::ecma::{ast::*, atoms::Atom};
 use swc_core::quote;
+use std::hash::{Hash, Hasher, DefaultHasher};
 
 macro_rules! ident {
     ($name:expr) => {
@@ -26,10 +24,7 @@ pub struct Instrumentation {
 
 impl Instrumentation {
     pub(crate) fn new(config: InstrumentationConfig) -> Self {
-        Self {
-            config,
-            count: 0,
-        }
+        Self { config, count: 0 }
     }
 
     fn new_fn(&self, body: BlockStmt) -> ArrowExpr {
@@ -108,12 +103,11 @@ impl Instrumentation {
         self.config.matches(module_name, version, file_path)
     }
 
-
     // The rest of these functions are from `VisitMut`, except they return a boolean to indicate
     // whether recusrsing through the tree is necessary, rather than calling
     // `visit_mut_children_with`.
 
-    pub fn visit_mut_module(&mut self, node: &mut Module) -> bool{
+    pub fn visit_mut_module(&mut self, node: &mut Module) -> bool {
         node.body
             .insert(1, ModuleItem::Stmt(self.create_tracing_channel()));
         true
@@ -126,7 +120,7 @@ impl Instrumentation {
         true
     }
 
-    pub fn visit_mut_fn_decl(&mut self, node: &mut FnDecl) -> bool{
+    pub fn visit_mut_fn_decl(&mut self, node: &mut FnDecl) -> bool {
         if self.config.function_query.matches_decl(node, self.count) && node.function.body.is_some()
         {
             node.function

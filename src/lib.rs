@@ -13,7 +13,6 @@ use swc_core::ecma::{
     ast::*,
     visit::{VisitMut, VisitMutWith},
 };
-use swc_core::common::{Span, SyntaxContext};
 use swc_core::quote;
 
 mod config;
@@ -23,12 +22,6 @@ mod instrumentation;
 pub use instrumentation::*;
 
 mod function_query;
-
-macro_rules! ident {
-    ($name:expr) => {
-        Ident::new($name.into(), Span::default(), SyntaxContext::empty())
-    };
-}
 
 /// This struct is responsible for managing all instrumentations. It's created from a YAML string
 /// via the [`FromStr`] trait. See tests for examples, but by-and-large this just means you can
@@ -98,77 +91,36 @@ macro_rules! visit_with_all {
     };
 }
 
+macro_rules! visit_with_all_fn {
+    ($method:ident, $item_struct:ty) => {
+        fn $method(&mut self, item: &mut $item_struct) {
+            visit_with_all!(self, $method, item);
+        }
+    };
+}
+
 impl VisitMut for InstrumentationVisitor<'_> {
     fn visit_mut_module(&mut self, item: &mut Module) {
-        let import = ImportDecl {
-            span: Span::default(),
-            specifiers: vec![ImportSpecifier::Named(ImportNamedSpecifier {
-                is_type_only: false,
-                span: Span::default(),
-                local: ident!("tr_ch_apm_tracingChannel"),
-                imported: Some(ModuleExportName::Ident(ident!("tracingChannel"))),
-            })],
-            src: Box::new(Str::from(self.dc_module.clone())),
-            type_only: false,
-            with: None,
-            phase: Default::default(),
-        };
-        item.body.insert(0, ModuleItem::ModuleDecl(import.into()));
+        let mut import = quote!(
+            "import { tracingChannel as tr_ch_apm_tracingChannel } from 'dc';" as ModuleItem,
+        );
+        import.as_mut_module_decl().unwrap().as_mut_import().unwrap().src = Box::new(Str::from(self.dc_module.clone()));
+        item.body.insert(0, import);
         visit_with_all!(self, visit_mut_module, item);
     }
 
     fn visit_mut_script(&mut self, item: &mut Script) {
-        item.body.insert(
-            get_script_start_index(item),
-            quote!(
-                "const { tracingChannel: tr_ch_apm_tracingChannel } = require($dc);" as Stmt,
-                dc: Expr = self.dc_module.clone().into(),
-            ),
+        let import = quote!(
+            "const { tracingChannel: tr_ch_apm_tracingChannel } = require($dc);" as Stmt,
+            dc: Expr = self.dc_module.clone().into(),
         );
+        item.body.insert(get_script_start_index(item), import);
         visit_with_all!(self, visit_mut_script, item);
     }
 
-    fn visit_mut_fn_decl(&mut self, item: &mut FnDecl) {
-        visit_with_all!(self, visit_mut_fn_decl, item);
-    }
-
-    fn visit_mut_var_decl(&mut self, item: &mut VarDecl) {
-        let mut recurse = false;
-        for instr in &mut self.instrumentations {
-            recurse = recurse || instr.visit_mut_var_decl(item);
-        }
-        if recurse {
-            item.visit_mut_children_with(self);
-        }
-    }
-
-    fn visit_mut_class_method(&mut self, item: &mut ClassMethod) {
-        let mut recurse = false;
-        for instr in &mut self.instrumentations {
-            recurse = recurse || instr.visit_mut_class_method(item);
-        }
-        if recurse {
-            item.visit_mut_children_with(self);
-        }
-    }
-
-    fn visit_mut_method_prop(&mut self, item: &mut MethodProp) {
-        let mut recurse = false;
-        for instr in &mut self.instrumentations {
-            recurse = recurse || instr.visit_mut_method_prop(item);
-        }
-        if recurse {
-            item.visit_mut_children_with(self);
-        }
-    }
-
-    fn visit_mut_assign_expr(&mut self, item: &mut AssignExpr) {
-        let mut recurse = false;
-        for instr in &mut self.instrumentations {
-            recurse = recurse || instr.visit_mut_assign_expr(item);
-        }
-        if recurse {
-            item.visit_mut_children_with(self);
-        }
-    }
+    visit_with_all_fn!(visit_mut_fn_decl, FnDecl);
+    visit_with_all_fn!(visit_mut_var_decl, VarDecl);
+    visit_with_all_fn!(visit_mut_class_method, ClassMethod);
+    visit_with_all_fn!(visit_mut_method_prop, MethodProp);
+    visit_with_all_fn!(visit_mut_assign_expr, AssignExpr);
 }
