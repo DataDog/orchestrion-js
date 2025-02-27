@@ -24,7 +24,7 @@ fn print_result(original: &str, modified: &str) {
 fn transpile(
     contents: &str,
     is_module: IsModule,
-    instrumentation: Vec<&mut Instrumentation>,
+    instrumentation: &mut InstrumentationVisitor,
 ) -> String {
     let compiler = Compiler::new(Arc::new(swc_core::common::SourceMap::new(
         FilePathMapping::empty(),
@@ -56,9 +56,7 @@ fn transpile(
                     Some(&compiler.comments() as &dyn Comments),
                 )
                 .and_then(|mut program| {
-                    for instr in instrumentation {
-                        program.visit_mut_with(instr);
-                    }
+                    program.visit_mut_with(instrumentation);
                     Ok(program)
                 })
                 .unwrap();
@@ -96,7 +94,7 @@ fn get_dir(test_name: &str) -> PathBuf {
     dir
 }
 
-pub fn transpile_and_test(test_name: &str, mjs: bool, instrumentations: Vec<&mut Instrumentation>) {
+pub fn transpile_and_test(test_name: &str, mjs: bool, instrumentations: &mut InstrumentationVisitor) {
     let dir = get_dir(test_name);
     let extension = if mjs { "mjs" } else { "js" };
     let instrumentable = dir.join(format!("mod.{}", extension));

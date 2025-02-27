@@ -8,13 +8,13 @@ macro_rules! make_test {
         #[test]
         fn $name() {
             let mut instrumentor = init_instrumentor(stringify!($name));
-            let instrumentations = instrumentor.get_matching_instrumentations(
+            let mut instrumentations = instrumentor.get_matching_instrumentations(
                 "undici",
                 "0.0.1",
                 &PathBuf::from("index.mjs"),
             );
 
-            transpile_and_test(stringify!($name), $mjs, instrumentations);
+            transpile_and_test(stringify!($name), $mjs, &mut instrumentations);
         }
     };
 }
