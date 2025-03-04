@@ -1,9 +1,15 @@
 use crate::config::InstrumentationConfig;
 use std::path::PathBuf;
 use swc_core::common::{Span, SyntaxContext};
-use swc_core::ecma::{ast::*, atoms::Atom};
+use swc_core::ecma::{
+    ast::{
+        ArrowExpr, AssignExpr, AssignTarget, BlockStmt, ClassMethod, Expr, FnDecl, FnExpr, Ident,
+        Lit, MemberProp, MethodProp, Module, ModuleItem, Pat, PropName, Script, SimpleAssignTarget,
+        Stmt, Str, VarDecl,
+    },
+    atoms::Atom,
+};
 use swc_core::quote;
-use std::hash::{Hash, Hasher, DefaultHasher};
 
 macro_rules! ident {
     ($name:expr) => {
@@ -63,8 +69,8 @@ impl Instrumentation {
         let ch_ident = ident!(format!("tr_ch_apm${}", self.config.channel_name));
         let trace_ident = ident!(format!(
             "tr_ch_apm${}.{}",
-            self.config.channel_name.clone(),
-            self.config.operator.clone().as_str()
+            self.config.channel_name,
+            self.config.operator.as_str()
         ));
         let traced_fn = self.new_fn(body.clone());
         body.stmts = vec![
@@ -87,11 +93,9 @@ impl Instrumentation {
             .matches_expr(func_expr, self.count, name.as_ref())
             && func_expr.function.body.is_some()
         {
-            func_expr
-                .function
-                .body
-                .as_mut()
-                .map(|body| self.insert_tracing(body));
+            if let Some(body) = func_expr.function.body.as_mut() {
+                self.insert_tracing(body)
+            }
             true
         } else {
             self.count += 1;
@@ -99,6 +103,7 @@ impl Instrumentation {
         }
     }
 
+    #[must_use]
     pub fn matches(&self, module_name: &str, version: &str, file_path: &PathBuf) -> bool {
         self.config.matches(module_name, version, file_path)
     }
@@ -123,10 +128,9 @@ impl Instrumentation {
     pub fn visit_mut_fn_decl(&mut self, node: &mut FnDecl) -> bool {
         if self.config.function_query.matches_decl(node, self.count) && node.function.body.is_some()
         {
-            node.function
-                .body
-                .as_mut()
-                .map(|body| self.insert_tracing(body));
+            if let Some(body) = node.function.body.as_mut() {
+                self.insert_tracing(body)
+            }
         } else {
             self.count += 1;
         }
@@ -158,10 +162,9 @@ impl Instrumentation {
             .matches_class_method(node, self.count, name.as_ref())
             && node.function.body.is_some()
         {
-            node.function
-                .body
-                .as_mut()
-                .map(|body| self.insert_tracing(body));
+            if let Some(body) = node.function.body.as_mut() {
+                self.insert_tracing(body)
+            }
         } else {
             self.count += 1;
         }
@@ -179,10 +182,9 @@ impl Instrumentation {
             .matches_method_prop(node, self.count, name.as_ref())
             && node.function.body.is_some()
         {
-            node.function
-                .body
-                .as_mut()
-                .map(|body| self.insert_tracing(body));
+            if let Some(body) = node.function.body.as_mut() {
+                self.insert_tracing(body)
+            }
         } else {
             self.count += 1;
         }
@@ -222,6 +224,7 @@ impl Instrumentation {
 }
 
 /// If the script starts with a "use strict" directive, we need to skip it when inserting there
+#[must_use]
 pub fn get_script_start_index(script: &Script) -> usize {
     if let Some(Stmt::Expr(expr)) = script.body.first() {
         if let Some(Lit::Str(str_lit)) = expr.expr.as_lit() {

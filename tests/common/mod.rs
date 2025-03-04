@@ -1,6 +1,5 @@
 use assert_cmd::prelude::*;
 use orchestrion_js::*;
-use std::include_str;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use std::process::Command;
@@ -55,9 +54,9 @@ fn transpile(
                     is_module,
                     Some(&compiler.comments() as &dyn Comments),
                 )
-                .and_then(|mut program| {
+                .map(|mut program| {
                     program.visit_mut_with(instrumentation);
-                    Ok(program)
+                    program
                 })
                 .unwrap();
             let result = compiler

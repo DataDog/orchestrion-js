@@ -7,12 +7,10 @@ macro_rules! make_test {
     ($name:ident, $mjs:literal) => {
         #[test]
         fn $name() {
+            let file_path = PathBuf::from("index.mjs");
             let mut instrumentor = init_instrumentor(stringify!($name));
-            let mut instrumentations = instrumentor.get_matching_instrumentations(
-                "undici",
-                "0.0.1",
-                &PathBuf::from("index.mjs"),
-            );
+            let mut instrumentations =
+                instrumentor.get_matching_instrumentations("undici", "0.0.1", &file_path);
 
             transpile_and_test(stringify!($name), $mjs, &mut instrumentations);
         }

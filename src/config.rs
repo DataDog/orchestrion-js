@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use nodejs_semver::{Range, Version};
 
-use crate::function_query::*;
+use crate::function_query::FunctionQuery;
 
 use yaml_rust2::{Yaml, YamlLoader};
 
@@ -122,7 +122,7 @@ impl TryFrom<&Yaml> for InstrumentationConfig {
         let version_range = get_str!(instr, "version_range");
         let version_range: Range = version_range
             .parse()
-            .map_err(|_| format!("Invalid version range: {}", version_range))?;
+            .map_err(|_| format!("Invalid version range: {version_range}"))?;
         let file_path = PathBuf::from(get_str!(instr, "file_path"));
         if instr["function_query"].as_hash().is_none() {
             return Err("Invalid config: 'function_query' must be a object".to_string());

@@ -1156,12 +1156,10 @@ version = "0.1.0"
 dependencies = [
  "assert_cmd",
  "nodejs-semver",
- "serde",
  "swc",
  "swc_core",
  "swc_ecma_parser",
  "swc_ecma_visit",
- "tempfile",
  "yaml-rust2",
 ]
 

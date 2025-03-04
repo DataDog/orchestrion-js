@@ -1,4 +1,4 @@
-use swc_core::ecma::ast::*;
+use swc_core::ecma::ast::{ClassMethod, FnDecl, FnExpr, Function, MethodProp};
 use yaml_rust2::Yaml;
 
 macro_rules! get_str {
@@ -110,17 +110,15 @@ impl TryFrom<&Yaml> for FunctionQuery {
         let typ = get_str!(query, "type");
         let kind = get_str!(query, "kind");
         let name = get_str!(query, "name");
-        let index = query["index"].as_i64().unwrap_or(0) as usize;
+        let index: usize = query["index"].as_i64().unwrap_or(0).try_into().unwrap_or(0);
 
         Ok(FunctionQuery {
             name: name.to_string(),
             typ: FunctionType::from_str(typ).ok_or(format!(
-                "Invalid config: 'type' must be one of 'decl', 'expr', or 'method', got '{}'",
-                typ
+                "Invalid config: 'type' must be one of 'decl', 'expr', or 'method', got '{typ}'"
             ))?,
             kind: FunctionKind::from_str(kind).ok_or(format!(
-                "Invalid config: 'kind' must be one of 'sync', 'async', 'generator', or 'async generator', got '{}'",
-                kind
+                "Invalid config: 'kind' must be one of 'sync', 'async', 'generator', or 'async generator', got '{kind}'"
             ))?,
             index,
         })
