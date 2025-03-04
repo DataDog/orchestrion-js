@@ -94,7 +94,7 @@ impl Instrumentation {
             && func_expr.function.body.is_some()
         {
             if let Some(body) = func_expr.function.body.as_mut() {
-                self.insert_tracing(body)
+                self.insert_tracing(body);
             }
             true
         } else {
@@ -129,7 +129,7 @@ impl Instrumentation {
         if self.config.function_query.matches_decl(node, self.count) && node.function.body.is_some()
         {
             if let Some(body) = node.function.body.as_mut() {
-                self.insert_tracing(body)
+                self.insert_tracing(body);
             }
         } else {
             self.count += 1;
@@ -163,7 +163,7 @@ impl Instrumentation {
             && node.function.body.is_some()
         {
             if let Some(body) = node.function.body.as_mut() {
-                self.insert_tracing(body)
+                self.insert_tracing(body);
             }
         } else {
             self.count += 1;
@@ -183,7 +183,7 @@ impl Instrumentation {
             && node.function.body.is_some()
         {
             if let Some(body) = node.function.body.as_mut() {
-                self.insert_tracing(body)
+                self.insert_tracing(body);
             }
         } else {
             self.count += 1;
