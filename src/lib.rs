@@ -80,9 +80,10 @@ impl FromStr for Instrumentor {
     }
 }
 
+#[derive(Debug)]
 pub struct InstrumentationVisitor<'a> {
-    instrumentations: Vec<&'a mut Instrumentation>,
-    dc_module: &'a str,
+    pub instrumentations: Vec<&'a mut Instrumentation>,
+    pub dc_module: &'a str,
 }
 
 impl<'a> InstrumentationVisitor<'a> {
