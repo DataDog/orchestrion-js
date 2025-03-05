@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use nodejs_semver::{Range, Version};
 
+use crate::error::OrchestrionError;
 use crate::function_query::FunctionQuery;
 
 use yaml_rust2::{Yaml, YamlLoader};
@@ -66,15 +67,15 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_yaml_data(yaml_str: &str) -> Result<Config, String> {
-        let docs = YamlLoader::load_from_str(yaml_str).map_err(|e| e.to_string())?;
+    pub fn from_yaml_data(yaml_str: &str) -> Result<Config, OrchestrionError> {
+        let docs = YamlLoader::load_from_str(yaml_str)?;
         let doc = &docs[0];
 
         let version = doc["version"]
             .as_i64()
             .ok_or("Invalid config: 'version' must be a number")?;
         if version != 1 {
-            return Err("Invalid config version".to_string());
+            return Err("Invalid config version".into());
         }
 
         let dc_module = doc["dc_module"].as_str().unwrap_or("diagnostics_channel");
@@ -89,7 +90,7 @@ impl Config {
 }
 
 impl InstrumentationConfig {
-    pub fn from_yaml(doc: &Yaml) -> Result<Vec<InstrumentationConfig>, String> {
+    pub fn from_yaml(doc: &Yaml) -> Result<Vec<InstrumentationConfig>, OrchestrionError> {
         let instrumentations = get_arr!(doc, "instrumentations");
         let mut configs = Vec::new();
 
@@ -115,7 +116,7 @@ impl InstrumentationConfig {
 }
 
 impl TryFrom<&Yaml> for InstrumentationConfig {
-    type Error = String;
+    type Error = OrchestrionError;
 
     fn try_from(instr: &Yaml) -> Result<Self, Self::Error> {
         let module_name = get_str!(instr, "module_name");
@@ -125,7 +126,7 @@ impl TryFrom<&Yaml> for InstrumentationConfig {
             .map_err(|_| format!("Invalid version range: {version_range}"))?;
         let file_path = PathBuf::from(get_str!(instr, "file_path"));
         if instr["function_query"].as_hash().is_none() {
-            return Err("Invalid config: 'function_query' must be a object".to_string());
+            return Err("Invalid config: 'function_query' must be a object".into());
         }
         let function_query = (&instr["function_query"]).try_into()?;
         let operator = InstrumentationOperator::from_str(get_str!(instr, "operator"))

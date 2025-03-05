@@ -23,6 +23,9 @@ use swc_core::ecma::{
 };
 use swc_core::quote;
 
+mod error;
+use error::OrchestrionError;
+
 mod config;
 use config::Config;
 
@@ -70,7 +73,7 @@ impl Instrumentor {
 }
 
 impl FromStr for Instrumentor {
-    type Err = String;
+    type Err = OrchestrionError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Config::from_yaml_data(s).map(Self::new)

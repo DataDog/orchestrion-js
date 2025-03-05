@@ -66,13 +66,24 @@ impl Instrumentation {
     }
 
     fn insert_tracing(&self, body: &mut BlockStmt) {
-        let ch_ident = ident!(format!("tr_ch_apm${}", self.config.channel_name));
+        let original_stmts = std::mem::take(&mut body.stmts);
+
+        // Create a new BlockStmt with the original statements
+        let original_body = BlockStmt {
+            span: body.span,
+            stmts: original_stmts,
+            ..body.clone()
+        };
+
+        let traced_fn = self.new_fn(original_body);
+
+        let ch_ident = ident!(format!("tr_ch_apm${}", &self.config.channel_name));
         let trace_ident = ident!(format!(
             "tr_ch_apm${}.{}",
-            self.config.channel_name,
+            &self.config.channel_name,
             self.config.operator.as_str()
         ));
-        let traced_fn = self.new_fn(body.clone());
+
         body.stmts = vec![
             quote!("const traced = $traced;" as Stmt, traced: Expr = traced_fn.into()),
             quote!(

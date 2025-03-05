@@ -1,3 +1,4 @@
+use crate::error::OrchestrionError;
 use swc_core::ecma::ast::{ClassMethod, FnDecl, FnExpr, Function, MethodProp};
 use yaml_rust2::Yaml;
 
@@ -104,7 +105,7 @@ impl FunctionQuery {
 }
 
 impl TryFrom<&Yaml> for FunctionQuery {
-    type Error = String;
+    type Error = OrchestrionError;
 
     fn try_from(query: &Yaml) -> Result<Self, Self::Error> {
         let typ = get_str!(query, "type");
