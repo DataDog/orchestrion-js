@@ -1,5 +1,5 @@
 use crate::error::OrchestrionError;
-use swc_core::ecma::ast::{ClassMethod, FnDecl, FnExpr, Function, MethodProp};
+use swc_core::ecma::ast::{FnDecl, FnExpr, Function};
 use yaml_rust2::Yaml;
 
 macro_rules! get_str {
@@ -71,36 +71,38 @@ pub struct FunctionQuery {
 }
 
 impl FunctionQuery {
-    pub fn matches_decl(&self, func: &FnDecl, count: usize) -> bool {
-        // TODO(bengl) check if it's only the count that's wrong, and somehow
-        // signal that so we can update the counter.
-        matches!(self.typ, FunctionType::FunctionDeclaration)
-            && self.kind.matches(&func.function)
-            && func.ident.sym == self.name
-            && count == self.index
+    fn maybe_increment_count(&self, matches_except_count: bool, count: &mut usize) -> bool {
+        if matches_except_count {
+            if self.index == *count {
+                true
+            } else {
+                *count += 1;
+                false
+            }
+        } else {
+            false
+        }
     }
 
-    pub fn matches_expr(&self, func: &FnExpr, count: usize, name: &str) -> bool {
-        // TODO(bengl) check if it's only the count that's wrong, and somehow
-        // signal that so we can update the counter.
-        matches!(self.typ, FunctionType::FunctionExpression)
+    pub fn matches_decl(&self, func: &FnDecl, count: &mut usize) -> bool {
+        let matches_except_count = matches!(self.typ, FunctionType::FunctionDeclaration)
             && self.kind.matches(&func.function)
-            && name == self.name
-            && count == self.index
+            && func.ident.sym == self.name;
+        self.maybe_increment_count(matches_except_count, count)
     }
 
-    pub fn matches_class_method(&self, func: &ClassMethod, count: usize, name: &str) -> bool {
-        matches!(self.typ, FunctionType::Method)
+    pub fn matches_expr(&self, func: &FnExpr, count: &mut usize, name: &str) -> bool {
+        let matches_except_count = matches!(self.typ, FunctionType::FunctionExpression)
             && self.kind.matches(&func.function)
-            && name == self.name
-            && count == self.index
+            && name == self.name;
+        self.maybe_increment_count(matches_except_count, count)
     }
 
-    pub fn matches_method_prop(&self, func: &MethodProp, count: usize, name: &str) -> bool {
-        matches!(self.typ, FunctionType::Method)
-            && self.kind.matches(&func.function)
-            && name == self.name
-            && count == self.index
+    pub fn matches_method(&self, func: &Function, count: &mut usize, name: &str) -> bool {
+        let matches_except_count = matches!(self.typ, FunctionType::Method)
+            && self.kind.matches(func)
+            && name == self.name;
+        self.maybe_increment_count(matches_except_count, count)
     }
 }
 

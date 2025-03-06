@@ -101,7 +101,7 @@ impl Instrumentation {
         if self
             .config
             .function_query
-            .matches_expr(func_expr, self.count, name.as_ref())
+            .matches_expr(func_expr, &mut self.count, name.as_ref())
             && func_expr.function.body.is_some()
         {
             if let Some(body) = func_expr.function.body.as_mut() {
@@ -109,7 +109,6 @@ impl Instrumentation {
             }
             true
         } else {
-            self.count += 1;
             false
         }
     }
@@ -137,13 +136,15 @@ impl Instrumentation {
     }
 
     pub fn visit_mut_fn_decl(&mut self, node: &mut FnDecl) -> bool {
-        if self.config.function_query.matches_decl(node, self.count) && node.function.body.is_some()
+        if self
+            .config
+            .function_query
+            .matches_decl(node, &mut self.count)
+            && node.function.body.is_some()
         {
             if let Some(body) = node.function.body.as_mut() {
                 self.insert_tracing(body);
             }
-        } else {
-            self.count += 1;
         }
         false
     }
@@ -170,14 +171,12 @@ impl Instrumentation {
         if self
             .config
             .function_query
-            .matches_class_method(node, self.count, name.as_ref())
+            .matches_method(&node.function, &mut self.count, name.as_ref())
             && node.function.body.is_some()
         {
             if let Some(body) = node.function.body.as_mut() {
                 self.insert_tracing(body);
             }
-        } else {
-            self.count += 1;
         }
         false
     }
@@ -190,14 +189,12 @@ impl Instrumentation {
         if self
             .config
             .function_query
-            .matches_method_prop(node, self.count, name.as_ref())
+            .matches_method(&node.function, &mut self.count, name.as_ref())
             && node.function.body.is_some()
         {
             if let Some(body) = node.function.body.as_mut() {
                 self.insert_tracing(body);
             }
-        } else {
-            self.count += 1;
         }
         false
     }
