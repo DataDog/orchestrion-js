@@ -8,6 +8,5 @@ instrumentations:
       name: fetch
       type: method
       kind: async
-      index: 1
     operator: tracePromise
     channel_name: Undici_fetch

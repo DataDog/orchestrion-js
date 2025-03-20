@@ -8,6 +8,5 @@ instrumentations:
       type: method
       kind: sync
       class: Undici
-      index: 1
     operator: traceSync
     channel_name: Undici_constructor

@@ -226,11 +226,16 @@ impl Instrumentation {
             PropName::Ident(ident) => ident.sym.clone(),
             _ => return false,
         };
+
+        // Only increment count when class matches
+        if !self.is_correct_class {
+            return true;
+        }
+
         if self
             .config
             .function_query
-            .matches_class_method(node, &mut self.count, name.as_ref())
-            && self.is_correct_class
+            .matches_method(&node.function, &mut self.count, name.as_ref())
             && node.function.body.is_some()
         {
             if let Some(body) = node.function.body.as_mut() {
@@ -241,11 +246,11 @@ impl Instrumentation {
     }
 
     pub fn visit_mut_constructor(&mut self, node: &mut Constructor) -> bool {
-        if self.config.function_query.name == "constructor"
-            && self.count == self.config.function_query.index
-            && self.is_correct_class
-            && node.body.is_some()
-        {
+        if !self.is_correct_class || self.config.function_query.name != "constructor" {
+            return false;
+        }
+
+        if self.count == self.config.function_query.index && node.body.is_some() {
             if let Some(body) = node.body.as_mut() {
                 self.insert_constructor_tracing(body);
             }
