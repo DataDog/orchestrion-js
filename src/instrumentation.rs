@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use swc_core::common::{Span, SyntaxContext};
 use swc_core::ecma::{
     ast::{
-        ArrowExpr, AssignExpr, AssignTarget, BlockStmt, ClassMethod, Expr, FnDecl, FnExpr, Ident,
-        Lit, MemberProp, MethodProp, Module, ModuleItem, Pat, PropName, Script, SimpleAssignTarget,
-        Stmt, Str, VarDecl,
+        ArrowExpr, AssignExpr, AssignTarget, BlockStmt, ClassDecl, ClassMethod, Constructor, Expr,
+        FnDecl, FnExpr, Ident, Lit, MemberProp, MethodProp, Module, ModuleItem, Pat, PropName,
+        Script, SimpleAssignTarget, Stmt, Str, VarDecl,
     },
     atoms::Atom,
 };
@@ -26,11 +26,16 @@ macro_rules! ident {
 pub struct Instrumentation {
     config: InstrumentationConfig,
     count: usize,
+    is_correct_class: bool,
 }
 
 impl Instrumentation {
     pub(crate) fn new(config: InstrumentationConfig) -> Self {
-        Self { config, count: 0 }
+        Self {
+            config,
+            count: 0,
+            is_correct_class: false,
+        }
     }
 
     fn new_fn(&self, body: BlockStmt) -> ArrowExpr {
@@ -94,6 +99,49 @@ impl Instrumentation {
                 "return $trace(traced, { arguments, self: this } );" as Stmt,
                 trace = trace_ident
             ),
+        ];
+    }
+
+    fn insert_constructor_tracing(&self, body: &mut BlockStmt) {
+        let original_stmts = std::mem::take(&mut body.stmts);
+
+        let ch_ident = ident!(format!("tr_ch_apm${}", &self.config.channel_name));
+        let ctx_ident = ident!(format!("tr_ch_apm_ctx${}", &self.config.channel_name));
+        let mut try_catch = quote!(
+            "try {
+                if ($ch.hasSubscribers) {
+                    $ch.start.publish($ctx);
+                }
+            } catch (tr_ch_err) { 
+                if ($ch.hasSubscribers) {
+                    $ctx.error = tr_ch_err;
+                    try {
+                        $ctx.self = this;
+                    } catch (refErr) {
+                        // This can only error out if super hasn't been called yet.
+                        // Safe to ignore, but note that self/this won't get into the context.
+                    }
+                    $ch.error.publish($ctx);
+                }
+                throw tr_ch_err;
+            } finally {
+                if ($ch.hasSubscribers) {
+                    $ctx.self = this;
+                    $ch.end.publish($ctx);
+                }
+            }" as Stmt,
+            ch = ch_ident,
+            ctx = ctx_ident.clone(),
+        );
+        if let Some(try_catch_stmt) = try_catch.as_mut_try_stmt() {
+            for stmt in &original_stmts {
+                try_catch_stmt.block.stmts.push(stmt.clone());
+            }
+        }
+
+        body.stmts = vec![
+            quote!("const $ctx = { arguments };" as Stmt, ctx = ctx_ident,),
+            try_catch,
         ];
     }
 
@@ -163,6 +211,16 @@ impl Instrumentation {
         !traced
     }
 
+    pub fn visit_mut_class_decl(&mut self, node: &mut ClassDecl) -> bool {
+        self.is_correct_class = self
+            .config
+            .function_query
+            .class
+            .as_ref()
+            .map_or(true, |class| node.ident.sym.as_ref() == class);
+        true
+    }
+
     pub fn visit_mut_class_method(&mut self, node: &mut ClassMethod) -> bool {
         let name = match &node.key {
             PropName::Ident(ident) => ident.sym.clone(),
@@ -171,12 +229,28 @@ impl Instrumentation {
         if self
             .config
             .function_query
-            .matches_method(&node.function, &mut self.count, name.as_ref())
+            .matches_class_method(node, &mut self.count, name.as_ref())
+            && self.is_correct_class
             && node.function.body.is_some()
         {
             if let Some(body) = node.function.body.as_mut() {
                 self.insert_tracing(body);
             }
+        }
+        true
+    }
+
+    pub fn visit_mut_constructor(&mut self, node: &mut Constructor) -> bool {
+        if self.config.function_query.name == "constructor"
+            && self.count == self.config.function_query.index
+            && self.is_correct_class
+            && node.body.is_some()
+        {
+            if let Some(body) = node.body.as_mut() {
+                self.insert_constructor_tracing(body);
+            }
+        } else {
+            self.count += 1;
         }
         false
     }

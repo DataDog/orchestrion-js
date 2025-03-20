@@ -4,10 +4,10 @@ instrumentations:
     version_range: ">=0.0.1"
     file_path: index.mjs
     function_query:
-      class: Undici
-      name: fetch
+      name: constructor
       type: method
-      kind: async
+      kind: sync
+      class: Undici
       index: 1
-    operator: tracePromise
-    channel_name: Undici_fetch
+    operator: traceSync
+    channel_name: Undici_constructor

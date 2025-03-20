@@ -65,6 +65,7 @@ impl FunctionKind {
 
 pub struct FunctionQuery {
     pub name: String,
+    pub class: Option<String>,
     pub typ: FunctionType,
     pub kind: FunctionKind,
     pub index: usize,
@@ -113,10 +114,14 @@ impl TryFrom<&Yaml> for FunctionQuery {
         let typ = get_str!(query, "type");
         let kind = get_str!(query, "kind");
         let name = get_str!(query, "name");
+        let class = query["class"]
+            .as_str()
+            .map(std::string::ToString::to_string);
         let index: usize = query["index"].as_i64().unwrap_or(0).try_into().unwrap_or(0);
 
         Ok(FunctionQuery {
             name: name.to_string(),
+            class,
             typ: FunctionType::from_str(typ).ok_or(format!(
                 "Invalid config: 'type' must be one of 'decl', 'expr', or 'method', got '{typ}'"
             ))?,

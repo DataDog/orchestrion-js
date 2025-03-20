@@ -18,7 +18,10 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use swc_core::ecma::{
-    ast::{AssignExpr, ClassMethod, FnDecl, MethodProp, Module, Script, Str, VarDecl},
+    ast::{
+        AssignExpr, ClassDecl, ClassMethod, Constructor, FnDecl, MethodProp, Module, Script, Str,
+        VarDecl,
+    },
     visit::{VisitMut, VisitMutWith},
 };
 use swc_core::quote;
@@ -142,7 +145,9 @@ impl VisitMut for InstrumentationVisitor<'_> {
 
     visit_with_all_fn!(visit_mut_fn_decl, FnDecl);
     visit_with_all_fn!(visit_mut_var_decl, VarDecl);
-    visit_with_all_fn!(visit_mut_class_method, ClassMethod);
     visit_with_all_fn!(visit_mut_method_prop, MethodProp);
     visit_with_all_fn!(visit_mut_assign_expr, AssignExpr);
+    visit_with_all_fn!(visit_mut_class_decl, ClassDecl);
+    visit_with_all_fn!(visit_mut_class_method, ClassMethod);
+    visit_with_all_fn!(visit_mut_constructor, Constructor);
 }
