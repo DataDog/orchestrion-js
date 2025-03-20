@@ -1,0 +1,13 @@
+version: 1
+instrumentations:
+  - module_name: undici
+    version_range: ">=0.0.1"
+    file_path: index.mjs
+    function_query:
+      name: constructor
+      type: method
+      kind: sync
+      class: Undici
+      index: 1
+    operator: traceSync
+    channel_name: Undici_constructor

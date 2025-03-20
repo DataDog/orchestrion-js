@@ -31,6 +31,8 @@ make_test!(object_method_cjs, false);
 
 make_test!(constructor_cjs, false);
 
+make_test!(constructor_mjs, true);
+
 make_test!(polyfill_mjs, true);
 
 make_test!(polyfill_cjs, false);
