@@ -10,6 +10,7 @@ macro_rules! get_str {
     };
 }
 
+#[derive(Debug)]
 pub enum FunctionType {
     FunctionDeclaration,
     FunctionExpression,
@@ -27,6 +28,7 @@ impl FunctionType {
     }
 }
 
+#[derive(Debug)]
 pub enum FunctionKind {
     Sync,
     Async,
@@ -63,6 +65,7 @@ impl FunctionKind {
     }
 }
 
+#[derive(Debug)]
 pub struct FunctionQuery {
     pub name: String,
     pub class: Option<String>,

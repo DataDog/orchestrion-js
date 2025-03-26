@@ -23,7 +23,7 @@ macro_rules! get_arr {
     };
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum InstrumentationOperator {
     Callback,
     Promise,
@@ -52,6 +52,7 @@ impl InstrumentationOperator {
     }
 }
 
+#[derive(Debug)]
 pub struct InstrumentationConfig {
     pub module_name: String,
     pub version_range: Range,

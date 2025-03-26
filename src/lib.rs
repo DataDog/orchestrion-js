@@ -104,7 +104,8 @@ macro_rules! visit_with_all {
     ($self:expr, $method:ident, $item:expr) => {
         let mut recurse = false;
         for instr in &mut $self.instrumentations {
-            recurse = recurse || instr.$method($item);
+            let needs_recurse = instr.$method($item);
+            recurse = recurse || needs_recurse;
         }
         if recurse {
             $item.visit_mut_children_with($self);

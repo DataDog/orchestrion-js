@@ -27,6 +27,8 @@ make_test!(expr_cjs, false);
 
 make_test!(class_method_cjs, false);
 
+make_test!(multiple_class_method_cjs, false);
+
 make_test!(object_method_cjs, false);
 
 make_test!(constructor_cjs, false);
@@ -36,3 +38,7 @@ make_test!(constructor_mjs, true);
 make_test!(polyfill_mjs, true);
 
 make_test!(polyfill_cjs, false);
+
+make_test!(index_cjs, false);
+
+make_test!(no_index_cjs, false);
