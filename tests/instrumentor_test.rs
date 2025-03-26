@@ -13,6 +13,9 @@ macro_rules! make_test {
                 instrumentor.get_matching_instrumentations("undici", "0.0.1", &file_path);
 
             transpile_and_test(stringify!($name), $mjs, &mut instrumentations);
+
+            // It has to work twice, since we might use the same instrumentor on multiple files
+            transpile_and_test(stringify!($name), $mjs, &mut instrumentations);
         }
     };
 }

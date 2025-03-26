@@ -133,6 +133,9 @@ impl VisitMut for InstrumentationVisitor<'_> {
             }
         }
         visit_with_all!(self, visit_mut_module, item);
+        for instr in &mut self.instrumentations {
+            instr.reset();
+        }
     }
 
     fn visit_mut_script(&mut self, item: &mut Script) {
@@ -142,6 +145,9 @@ impl VisitMut for InstrumentationVisitor<'_> {
         );
         item.body.insert(get_script_start_index(item), import);
         visit_with_all!(self, visit_mut_script, item);
+        for instr in &mut self.instrumentations {
+            instr.reset();
+        }
     }
 
     visit_with_all_fn!(visit_mut_fn_decl, FnDecl);

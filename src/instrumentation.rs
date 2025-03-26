@@ -38,6 +38,11 @@ impl Instrumentation {
         }
     }
 
+    pub(crate) fn reset(&mut self) {
+        self.count = 0;
+        self.is_correct_class = false;
+    }
+
     fn new_fn(&self, body: BlockStmt) -> ArrowExpr {
         ArrowExpr {
             params: vec![],
