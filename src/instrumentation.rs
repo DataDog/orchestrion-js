@@ -1,4 +1,5 @@
 use crate::config::InstrumentationConfig;
+use crate::ident;
 use std::path::PathBuf;
 use swc_core::common::{Span, SyntaxContext};
 use swc_core::ecma::{
@@ -10,12 +11,6 @@ use swc_core::ecma::{
     atoms::Atom,
 };
 use swc_core::quote;
-
-macro_rules! ident {
-    ($name:expr) => {
-        Ident::new($name.into(), Span::default(), SyntaxContext::empty())
-    };
-}
 
 /// An [`Instrumentation`] instance represents a single instrumentation configuration, and implements
 /// SWC's [`VisitMut`] trait to insert tracing code into matching functions. You can use this
@@ -121,7 +116,7 @@ impl Instrumentation {
                 if ($ch.hasSubscribers) {
                     $ch.start.publish($ctx);
                 }
-            } catch (tr_ch_err) { 
+            } catch (tr_ch_err) {
                 if ($ch.hasSubscribers) {
                     $ctx.error = tr_ch_err;
                     try {
@@ -226,7 +221,7 @@ impl Instrumentation {
             .function_query
             .class
             .as_ref()
-            .map_or(true, |class| node.ident.sym.as_ref() == class);
+            .is_none_or(|class| node.ident.sym.as_ref() == class);
         true
     }
 

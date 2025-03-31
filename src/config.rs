@@ -4,24 +4,9 @@ use nodejs_semver::{Range, Version};
 
 use crate::error::OrchestrionError;
 use crate::function_query::FunctionQuery;
+use crate::{get_arr, get_str};
 
 use yaml_rust2::{Yaml, YamlLoader};
-
-macro_rules! get_str {
-    ($property:expr, $name:expr) => {
-        $property[$name]
-            .as_str()
-            .ok_or(format!("Invalid config: '{}' must be a string", $name))?
-    };
-}
-
-macro_rules! get_arr {
-    ($property:expr, $name:expr) => {
-        $property[$name]
-            .as_vec()
-            .ok_or(format!("Invalid config: '{}' must be a array", $name))?
-    };
-}
 
 #[derive(Clone, Debug)]
 pub enum InstrumentationOperator {
@@ -64,7 +49,7 @@ pub struct InstrumentationConfig {
 
 pub struct Config {
     pub instrumentations: Vec<InstrumentationConfig>,
-    pub dc_module: String,
+    pub diagnostic_channel_module: String,
 }
 
 impl Config {
@@ -72,12 +57,11 @@ impl Config {
         let docs = YamlLoader::load_from_str(yaml_str)?;
         let doc = &docs[0];
 
-        let version = doc["version"]
-            .as_i64()
-            .ok_or("Invalid config: 'version' must be a number")?;
-        if version != 1 {
-            return Err("Invalid config version".into());
-        }
+        match doc["version"].as_i64() {
+            Some(1) => 1,
+            Some(_) => return Err("Invalid config version".into()),
+            None => return Err("Invalid config: 'version' must be a number".into()),
+        };
 
         let dc_module = doc["dc_module"].as_str().unwrap_or("diagnostics_channel");
 
@@ -85,7 +69,7 @@ impl Config {
 
         Ok(Config {
             instrumentations: configs,
-            dc_module: dc_module.to_string(),
+            diagnostic_channel_module: dc_module.to_string(),
         })
     }
 }

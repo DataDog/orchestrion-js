@@ -6,14 +6,7 @@
 //!
 //! [`VisitMut`]: https://rustdoc.swc.rs/swc_core/ecma/visit/trait.VisitMut.html
 
-#![deny(clippy::all)]
-#![deny(clippy::pedantic)]
-#![deny(clippy::style)]
-#![deny(clippy::perf)]
-#![deny(clippy::complexity)]
-#![deny(clippy::correctness)]
-#![deny(clippy::unwrap_used)]
-
+mod macros;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -44,7 +37,7 @@ mod function_query;
 /// [`FromStr`]: https://doc.rust-lang.org/std/str/trait.FromStr.html
 pub struct Instrumentor {
     instrumentations: Vec<Instrumentation>,
-    dc_module: String,
+    diagnostic_channel_module: String,
 }
 
 impl Instrumentor {
@@ -55,7 +48,7 @@ impl Instrumentor {
                 .into_iter()
                 .map(Instrumentation::new)
                 .collect(),
-            dc_module: config.dc_module,
+            diagnostic_channel_module: config.diagnostic_channel_module,
         }
     }
 
@@ -71,7 +64,7 @@ impl Instrumentor {
             .instrumentations
             .iter_mut()
             .filter(|instr| instr.matches(module_name, version, file_path));
-        InstrumentationVisitor::new(instrumentations, self.dc_module.as_ref())
+        InstrumentationVisitor::new(instrumentations, self.diagnostic_channel_module.as_ref())
     }
 }
 
