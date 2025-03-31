@@ -1,14 +1,7 @@
 use crate::error::OrchestrionError;
+use crate::get_str;
 use swc_core::ecma::ast::{FnDecl, FnExpr, Function};
 use yaml_rust2::Yaml;
-
-macro_rules! get_str {
-    ($property:expr, $name:expr) => {
-        $property[$name]
-            .as_str()
-            .ok_or(format!("Invalid config: '{}' must be a string", $name))?
-    };
-}
 
 #[derive(Debug)]
 pub enum FunctionType {
