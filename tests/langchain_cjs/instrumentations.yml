@@ -1,0 +1,23 @@
+version: 1
+instrumentations:
+  - module_name: undici
+    version_range: ">=0.0.1"
+    file_path: index.mjs
+    function_query:
+      name: invoke
+      type: method
+      kind: async
+      class: RunnableSequence
+    operator: tracePromise
+    channel_name: fetch_decl
+  - module_name: undici
+    version_range: ">=0.0.1"
+    file_path: index.mjs
+    function_query:
+      name: batch
+      type: method
+      kind: async
+      class: RunnableSequence
+    operator: tracePromise
+    channel_name: fetch_decl
+
