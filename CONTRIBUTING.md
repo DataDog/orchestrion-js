@@ -9,7 +9,7 @@ Welcome! We are glad you are interested in contributing to Orchestrion-JS. This 
 
 If you want to contribute with a new feature, before start writing any code, you will need to get your proposal accepted by the maintainers. This is to avoid going through the effort of writing the code and getting it rejected because it is already being worked on in a different way, or it is outside the scope of the project.
 
-Open a new issue with the title "[RFC] Title of your proposal". In the description explain carefully why you think this feature is needed, why it is useful, and how you plan to implement it. We recommend to use the RFC issue template we provide.
+Open a new issue with the title "[RFC] Title of your proposal". In the description explain carefully why you think this feature is needed, why it is useful, and how you plan to implement it.
 
 The maintainers will label the issue as `type/feature` or `type/major_change` and `rfc/discussion` and will start a conversation with you to discuss it. If the proposal gets accepted it will be tagged as `rfc/approved`. Feel free to start coding at that point and propose a PR, linking it to the issue.
 
@@ -29,6 +29,7 @@ $ git clone git@github.com:DataDog/orchestrion-js.git
 $ cd orchestrion-js
 $ rustup install stable
 $ cargo check # or `cargo test`, etc.
+```
 
 ### Testing your changes
 
