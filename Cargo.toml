@@ -14,9 +14,9 @@ lto = true
 
 [dependencies]
 nodejs-semver = "4.1.0"
-swc = "16.1.0"
-swc_core = { version = "16.2.3", features = ["ecma_plugin_transform","ecma_quote"] }
-swc_ecma_parser = "10.0.0"
+swc = "21.0.0"
+swc_core = { version = "22.4.0", features = ["ecma_plugin_transform","ecma_quote"] }
+swc_ecma_parser = "11.1.2"
 swc_ecma_visit = { version = "8.0.0", features = ["path"] }
 yaml-rust2 = "0.10.0"
 
