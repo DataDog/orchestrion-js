@@ -12,6 +12,7 @@ use swc_core::common::{comments::Comments, errors::ColorConfig, FileName, FilePa
 use swc_core::ecma::ast::EsVersion;
 use swc_ecma_parser::{EsSyntax, Syntax};
 use swc_ecma_visit::VisitMutWith;
+use serde_yaml::from_str;
 
 fn print_result(original: &str, modified: &str) {
     println!(
@@ -83,7 +84,9 @@ pub fn init_instrumentor(test_name: &str) -> Instrumentor {
     let mut file = get_dir(test_name);
     file.push("instrumentations.yml");
     let yaml = std::fs::read_to_string(file).unwrap();
-    yaml.parse().unwrap()
+    let config = from_str::<OrchestrionConfig>(&yaml)
+        .unwrap_or_else(|err| panic!("{}", err));
+    config.into()
 }
 
 fn get_dir(test_name: &str) -> PathBuf {

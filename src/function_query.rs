@@ -1,19 +1,13 @@
-use crate::error::OrchestrionError;
+use serde::Deserialize;
 use swc_core::ecma::ast::{FnDecl, FnExpr, Function};
-use yaml_rust2::Yaml;
 
-macro_rules! get_str {
-    ($property:expr, $name:expr) => {
-        $property[$name]
-            .as_str()
-            .ok_or(format!("Invalid config: '{}' must be a string", $name))?
-    };
-}
-
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Clone)]
 pub enum FunctionType {
+    #[serde(rename = "decl")]
     FunctionDeclaration,
+    #[serde(rename = "expr")]
     FunctionExpression,
+    #[serde(rename = "method")]
     Method,
 }
 
@@ -28,11 +22,15 @@ impl FunctionType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Clone)]
 pub enum FunctionKind {
+    #[serde(rename = "sync")]
     Sync,
+    #[serde(rename = "async")]
     Async,
+    #[serde(rename = "generator")]
     Generator,
+    #[serde(rename = "async generator")]
     AsyncGenerator,
 }
 
@@ -53,24 +51,16 @@ impl FunctionKind {
             FunctionKind::AsyncGenerator => func.is_async && func.is_generator,
         }
     }
-
-    pub fn from_str(s: &str) -> Option<FunctionKind> {
-        match s {
-            "sync" => Some(FunctionKind::Sync),
-            "async" => Some(FunctionKind::Async),
-            "generator" => Some(FunctionKind::Generator),
-            "async generator" => Some(FunctionKind::AsyncGenerator),
-            _ => None,
-        }
-    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct FunctionQuery {
     pub name: String,
     pub class: Option<String>,
+    #[serde(rename = "type")]
     pub typ: FunctionType,
     pub kind: FunctionKind,
+    #[serde(default)]
     pub index: usize,
 }
 
@@ -107,31 +97,5 @@ impl FunctionQuery {
             && self.kind.matches(func)
             && name == self.name;
         self.maybe_increment_count(matches_except_count, count)
-    }
-}
-
-impl TryFrom<&Yaml> for FunctionQuery {
-    type Error = OrchestrionError;
-
-    fn try_from(query: &Yaml) -> Result<Self, Self::Error> {
-        let typ = get_str!(query, "type");
-        let kind = get_str!(query, "kind");
-        let name = get_str!(query, "name");
-        let class = query["class"]
-            .as_str()
-            .map(std::string::ToString::to_string);
-        let index: usize = query["index"].as_i64().unwrap_or(0).try_into().unwrap_or(0);
-
-        Ok(FunctionQuery {
-            name: name.to_string(),
-            class,
-            typ: FunctionType::from_str(typ).ok_or(format!(
-                "Invalid config: 'type' must be one of 'decl', 'expr', or 'method', got '{typ}'"
-            ))?,
-            kind: FunctionKind::from_str(kind).ok_or(format!(
-                "Invalid config: 'kind' must be one of 'sync', 'async', 'generator', or 'async generator', got '{kind}'"
-            ))?,
-            index,
-        })
     }
 }

@@ -15,7 +15,6 @@
 #![deny(clippy::unwrap_used)]
 
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use swc_core::ecma::{
     ast::{
@@ -26,11 +25,8 @@ use swc_core::ecma::{
 };
 use swc_core::quote;
 
-mod error;
-use error::OrchestrionError;
-
 mod config;
-use config::Config;
+pub use config::OrchestrionConfig;
 
 mod instrumentation;
 pub use instrumentation::*;
@@ -48,7 +44,7 @@ pub struct Instrumentor {
 }
 
 impl Instrumentor {
-    fn new(config: Config) -> Self {
+    pub fn new(config: OrchestrionConfig) -> Self {
         Self {
             instrumentations: config
                 .instrumentations
@@ -75,11 +71,9 @@ impl Instrumentor {
     }
 }
 
-impl FromStr for Instrumentor {
-    type Err = OrchestrionError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Config::from_yaml_data(s).map(Self::new)
+impl From<OrchestrionConfig> for Instrumentor {
+    fn from(config: OrchestrionConfig) -> Self {
+        Self::new(config)
     }
 }
 
