@@ -11,7 +11,7 @@ fn constructor_cjs() {
         Config::new_single_with_default_dc_module(InstrumentationConfig {
             module_name: "undici".to_string(),
             version_range: Range::parse(">=0.0.1").unwrap(),
-            file_path: PathBuf::from("tests/constructor_cjs/index.mjs"),
+            file_path: PathBuf::from("index.mjs"),
             function_query: FunctionQuery {
                 class: Some("Undici".to_string()),
                 name: "constructor".to_string(),

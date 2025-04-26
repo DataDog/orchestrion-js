@@ -87,7 +87,7 @@ pub fn transpile_and_test(test_file: &str, mjs: bool, config: Config) {
     let test_file = PathBuf::from(test_file);
     let test_dir = test_file.parent().expect("Couldn't find test directory");
 
-    let file_path = test_dir.join("index.mjs");
+    let file_path = PathBuf::from("index.mjs");
     let mut instrumentor = Instrumentor::new(config);
     let mut instrumentations =
         instrumentor.get_matching_instrumentations("undici", "0.0.1", &file_path);

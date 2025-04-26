@@ -13,7 +13,7 @@ fn multiple_class_method_cjs() {
                 InstrumentationConfig {
                     module_name: "undici".to_string(),
                     version_range: Range::parse(">=0.0.1").unwrap(),
-                    file_path: PathBuf::from("tests/multiple_class_method_cjs/index.mjs"),
+                    file_path: PathBuf::from("index.mjs"),
                     function_query: FunctionQuery {
                         class: Some("Undici".to_string()),
                         name: "fetch1".to_string(),
@@ -27,7 +27,7 @@ fn multiple_class_method_cjs() {
                 InstrumentationConfig {
                     module_name: "undici".to_string(),
                     version_range: Range::parse(">=0.0.1").unwrap(),
-                    file_path: PathBuf::from("tests/multiple_class_method_cjs/index.mjs"),
+                    file_path: PathBuf::from("index.mjs"),
                     function_query: FunctionQuery {
                         class: Some("Undici".to_string()),
                         name: "fetch2".to_string(),
