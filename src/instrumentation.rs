@@ -53,8 +53,8 @@ impl Instrumentation {
         ArrowExpr {
             params: vec![],
             body: Box::new(body.into()),
-            is_async: self.config.function_query.kind.is_async(),
-            is_generator: self.config.function_query.kind.is_generator(),
+            is_async: self.config.function_query.kind().is_async(),
+            is_generator: false,
             type_params: None,
             return_type: None,
             span: Span::default(),
@@ -68,7 +68,7 @@ impl Instrumentation {
             span: Span::default(),
             value: format!(
                 "orchestrion:{}:{}",
-                self.config.module_name, self.config.channel_name
+                self.config.module.name, self.config.channel_name
             )
             .into(),
             raw: None,
@@ -99,7 +99,7 @@ impl Instrumentation {
         let trace_ident = ident!(format!(
             "tr_ch_apm${}.{}",
             &self.config.channel_name,
-            self.config.operator.as_str()
+            self.config.function_query.kind().tracing_operator()
         ));
 
         body.stmts = vec![
@@ -230,8 +230,7 @@ impl Instrumentation {
         self.is_correct_class = self
             .config
             .function_query
-            .class
-            .as_ref()
+            .class_name()
             .is_none_or(|class| node.ident.sym.as_ref() == class);
         true
     }
@@ -261,11 +260,11 @@ impl Instrumentation {
     }
 
     pub fn visit_mut_constructor(&mut self, node: &mut Constructor) -> bool {
-        if !self.is_correct_class || self.config.function_query.name != "constructor" {
+        if !self.is_correct_class || self.config.function_query.name() != "constructor" {
             return false;
         }
 
-        if self.count == self.config.function_query.index && node.body.is_some() {
+        if self.count == self.config.function_query.index() && node.body.is_some() {
             if let Some(body) = node.body.as_mut() {
                 self.insert_constructor_tracing(body);
             }

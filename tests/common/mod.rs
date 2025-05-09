@@ -83,6 +83,9 @@ fn transpile(
     .unwrap()
 }
 
+static TEST_MODULE_NAME: &'static str = "undici";
+static TEST_MODULE_PATH: &'static str = "index.mjs";
+
 pub fn transpile_and_test(test_file: &str, mjs: bool, config: Config) {
     let test_file = PathBuf::from(test_file);
     let test_dir = test_file.parent().expect("Couldn't find test directory");
@@ -90,7 +93,7 @@ pub fn transpile_and_test(test_file: &str, mjs: bool, config: Config) {
     let file_path = PathBuf::from("index.mjs");
     let mut instrumentor = Instrumentor::new(config);
     let mut instrumentations =
-        instrumentor.get_matching_instrumentations("undici", "0.0.1", &file_path);
+        instrumentor.get_matching_instrumentations(TEST_MODULE_NAME, "0.0.1", &file_path);
 
     let extension = if mjs { "mjs" } else { "js" };
     let instrumentable = test_dir.join(format!("mod.{}", extension));
@@ -112,4 +115,8 @@ pub fn transpile_and_test(test_file: &str, mjs: bool, config: Config) {
         .arg(&test_file)
         .assert()
         .success();
+}
+
+pub fn test_module_matcher() -> ModuleMatcher {
+    ModuleMatcher::new(TEST_MODULE_NAME, ">=0.0.1", TEST_MODULE_PATH).unwrap()
 }
