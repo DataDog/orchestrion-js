@@ -2,6 +2,7 @@
  * Unless explicitly stated otherwise all files in this repository are licensed under the Apache-2.0 License.
  * This product includes software developed at Datadog (<https://www.datadoghq.com>/). Copyright 2025 Datadog, Inc.
  **/
+use serde::{Deserialize, Serialize};
 use swc_core::ecma::ast::{FnDecl, FnExpr, Function};
 
 #[derive(Debug, Clone)]
@@ -11,7 +12,8 @@ pub(crate) enum FunctionType {
     Method,
 }
 
-#[derive(Debug, Clone)]
+#[cfg_attr(feature = "wasm", derive(tsify::Tsify))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FunctionKind {
     Sync,
     Async,
@@ -40,31 +42,45 @@ impl FunctionKind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[cfg_attr(feature = "wasm", derive(tsify::Tsify))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged, rename_all_fields = "camelCase")]
 pub enum FunctionQuery {
-    ClassConstructor {
-        class_name: String,
-        index: usize,
-    },
+    // The order here matters because this enum is untagged, serde will try
+    // choose the first variant that matches the data.
     ClassMethod {
         class_name: String,
         method_name: String,
         kind: FunctionKind,
+        #[serde(default)]
+        #[cfg_attr(feature = "wasm", tsify(optional))]
+        index: usize,
+    },
+    ClassConstructor {
+        class_name: String,
+        #[serde(default)]
+        #[cfg_attr(feature = "wasm", tsify(optional))]
         index: usize,
     },
     ObjectMethod {
         method_name: String,
         kind: FunctionKind,
+        #[serde(default)]
+        #[cfg_attr(feature = "wasm", tsify(optional))]
         index: usize,
     },
     FunctionDeclaration {
         function_name: String,
         kind: FunctionKind,
+        #[serde(default)]
+        #[cfg_attr(feature = "wasm", tsify(optional))]
         index: usize,
     },
     FunctionExpression {
         expression_name: String,
         kind: FunctionKind,
+        #[serde(default)]
+        #[cfg_attr(feature = "wasm", tsify(optional))]
         index: usize,
     },
 }

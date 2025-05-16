@@ -4,9 +4,12 @@
  **/
 use crate::function_query::FunctionQuery;
 use nodejs_semver::{Range, SemverError, Version};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Debug, Clone)]
+#[cfg_attr(feature = "wasm", derive(tsify::Tsify))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ModuleMatcher {
     pub name: String,
     pub version_range: Range,
@@ -41,7 +44,10 @@ impl ModuleMatcher {
     }
 }
 
-#[derive(Debug, Clone)]
+#[cfg_attr(feature = "wasm", derive(tsify::Tsify))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm", tsify(into_wasm_abi, from_wasm_abi))]
+#[serde(rename_all = "camelCase")]
 pub struct InstrumentationConfig {
     pub channel_name: String,
     pub module: ModuleMatcher,
