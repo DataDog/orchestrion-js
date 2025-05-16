@@ -1040,6 +1040,7 @@ checksum = "54a541e66989ad860689e1994447f22ab670d604068ed11376894ada03890c11"
 dependencies = [
  "bytecount",
  "miette",
+ "serde",
  "thiserror 1.0.69",
  "winnow",
 ]
@@ -1124,6 +1125,7 @@ version = "0.1.0"
 dependencies = [
  "assert_cmd",
  "nodejs-semver",
+ "serde",
  "swc",
  "swc_core",
  "swc_ecma_parser",

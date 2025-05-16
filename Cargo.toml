@@ -13,7 +13,8 @@ license = "Apache-2.0"
 lto = true
 
 [dependencies]
-nodejs-semver = "4"
+nodejs-semver = { version = "4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
 swc = "21"
 swc_core = { version = "22", features = ["ecma_plugin_transform","ecma_quote"] }
 swc_ecma_parser = "11"

@@ -3,6 +3,7 @@
  * This product includes software developed at Datadog (<https://www.datadoghq.com>/). Copyright 2025 Datadog, Inc.
  **/
 use swc_core::ecma::ast::{FnDecl, FnExpr, Function};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
 pub(crate) enum FunctionType {
@@ -11,7 +12,7 @@ pub(crate) enum FunctionType {
     Method,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FunctionKind {
     Sync,
     Async,
@@ -40,7 +41,7 @@ impl FunctionKind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FunctionQuery {
     ClassConstructor {
         class_name: String,

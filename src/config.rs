@@ -3,10 +3,12 @@
  * This product includes software developed at Datadog (<https://www.datadoghq.com>/). Copyright 2025 Datadog, Inc.
  **/
 use crate::function_query::FunctionQuery;
-use nodejs_semver::{Range, SemverError, Version};
+pub use nodejs_semver::Range;
+use nodejs_semver::{SemverError, Version};
 use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModuleMatcher {
     pub name: String,
     pub version_range: Range,
@@ -41,7 +43,7 @@ impl ModuleMatcher {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InstrumentationConfig {
     pub channel_name: String,
     pub module: ModuleMatcher,
@@ -59,7 +61,7 @@ impl InstrumentationConfig {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub instrumentations: Vec<InstrumentationConfig>,
     pub dc_module: String,
