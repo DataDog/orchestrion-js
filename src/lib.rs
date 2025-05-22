@@ -65,16 +65,16 @@ impl Instrumentor {
 
     /// For a given module name, version, and file path within the module, return all
     /// `Instrumentation` instances that match.
+    #[must_use]
     pub fn get_matching_instrumentations<'a>(
         &'a mut self,
-        module_name: &'a str,
-        version: &'a str,
-        file_path: &'a PathBuf,
+        absolute_path: &'a PathBuf,
+        dependency: Option<&'a Dependency>,
     ) -> InstrumentationVisitor<'a> {
         let instrumentations = self
             .instrumentations
             .iter_mut()
-            .filter(|instr| instr.matches(module_name, version, file_path));
+            .filter(move |instr| instr.matches(absolute_path, dependency));
 
         InstrumentationVisitor::new(instrumentations, self.dc_module.as_ref())
     }
