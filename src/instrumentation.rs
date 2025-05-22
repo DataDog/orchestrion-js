@@ -3,6 +3,7 @@
  * This product includes software developed at Datadog (<https://www.datadoghq.com>/). Copyright 2025 Datadog, Inc.
  **/
 use crate::config::InstrumentationConfig;
+use crate::Dependency;
 use std::path::PathBuf;
 use swc_core::common::{Span, SyntaxContext};
 use swc_core::ecma::{
@@ -27,7 +28,7 @@ macro_rules! ident {
 ///
 /// [`Instrumentation`]: Instrumentation
 /// [`VisitMut`]: https://rustdoc.swc.rs/swc_core/ecma/visit/trait.VisitMut.html
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Instrumentation {
     config: InstrumentationConfig,
     count: usize,
@@ -64,13 +65,17 @@ impl Instrumentation {
 
     fn create_tracing_channel(&self) -> Stmt {
         let ch_str = ident!(format!("tr_ch_apm${}", self.config.channel_name));
+        let ch_string_value = match &self.config.code_matcher {
+            crate::CodeMatcher::Dependency { name, .. } => {
+                format!("orchestrion:{}:{}", name, self.config.channel_name)
+            }
+            crate::CodeMatcher::AbsolutePaths { .. } => {
+                format!("orchestrion:{}", self.config.channel_name)
+            }
+        };
         let channel_string = Expr::Lit(Lit::Str(Str {
             span: Span::default(),
-            value: format!(
-                "orchestrion:{}:{}",
-                self.config.module.name, self.config.channel_name
-            )
-            .into(),
+            value: ch_string_value.into(),
             raw: None,
         }));
         let define_channel = quote!(
@@ -177,8 +182,8 @@ impl Instrumentation {
     }
 
     #[must_use]
-    pub fn matches(&self, module_name: &str, version: &str, file_path: &PathBuf) -> bool {
-        self.config.matches(module_name, version, file_path)
+    pub fn matches(&self, absolute_path: &PathBuf, dependency: Option<&Dependency>) -> bool {
+        self.config.matches(absolute_path, dependency)
     }
 
     // The rest of these functions are from `VisitMut`, except they return a boolean to indicate

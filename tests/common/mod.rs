@@ -3,6 +3,7 @@
  * This product includes software developed at Datadog (https://www.datadoghq.com/). Copyright 2025 Datadog, Inc.
  **/
 use assert_cmd::prelude::*;
+use nodejs_semver::Version;
 use orchestrion_js::*;
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -83,8 +84,8 @@ fn transpile(
     .unwrap()
 }
 
-static TEST_MODULE_NAME: &'static str = "undici";
-static TEST_MODULE_PATH: &'static str = "index.mjs";
+static TEST_MODULE_NAME: &str = "undici";
+static TEST_MODULE_PATH: &str = "index.mjs";
 
 pub fn transpile_and_test(test_file: &str, mjs: bool, config: Config) {
     let test_file = PathBuf::from(test_file);
@@ -92,8 +93,13 @@ pub fn transpile_and_test(test_file: &str, mjs: bool, config: Config) {
 
     let file_path = PathBuf::from("index.mjs");
     let mut instrumentor = Instrumentor::new(config);
-    let mut instrumentations =
-        instrumentor.get_matching_instrumentations(TEST_MODULE_NAME, "0.0.1", &file_path);
+    let dep = Dependency {
+        name: TEST_MODULE_NAME.to_string(),
+        version: Version::parse("0.0.1").unwrap(),
+        relative_path: file_path,
+    };
+    let abs = PathBuf::from("");
+    let mut instrumentations = instrumentor.get_matching_instrumentations(&abs, Some(&dep));
 
     let extension = if mjs { "mjs" } else { "js" };
     let instrumentable = test_dir.join(format!("mod.{}", extension));
@@ -117,6 +123,6 @@ pub fn transpile_and_test(test_file: &str, mjs: bool, config: Config) {
         .success();
 }
 
-pub fn test_module_matcher() -> ModuleMatcher {
-    ModuleMatcher::new(TEST_MODULE_NAME, ">=0.0.1", TEST_MODULE_PATH).unwrap()
+pub fn test_module_matcher() -> CodeMatcher {
+    CodeMatcher::dependency(TEST_MODULE_NAME, ">=0.0.1", TEST_MODULE_PATH).unwrap()
 }
