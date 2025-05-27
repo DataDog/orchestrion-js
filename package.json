@@ -1,0 +1,24 @@
+{
+  "name": "orchestrion-js",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "files": [
+    "./pkg/orchestrion_js_bg.wasm",
+    "./pkg/orchestrion_js.js",
+    "./pkg/orchestrion_js.d.ts",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "main": "./pkg/orchestrion_js.js",
+  "types": "./pkg/orchestrion_js.d.ts",
+  "scripts": {
+    "build": "wasm-pack build --target nodejs --release -- --features wasm",
+    "test": "node ./tests/tests.mjs"
+  },
+  "dependencies": {
+    "wasm-pack": "^0.13.1"
+  },
+  "volta": {
+    "node": "22.15.0"
+  }
+}

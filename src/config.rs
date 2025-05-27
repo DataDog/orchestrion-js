@@ -6,6 +6,12 @@ use crate::function_query::FunctionQuery;
 use nodejs_semver::{Range, SemverError, Version};
 use std::path::PathBuf;
 
+#[cfg_attr(feature = "wasm", derive(tsify::Tsify))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(rename_all = "camelCase")
+)]
 #[derive(Debug, Clone)]
 pub struct ModuleMatcher {
     pub name: String,
@@ -41,6 +47,16 @@ impl ModuleMatcher {
     }
 }
 
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(rename_all = "camelCase")
+)]
+#[cfg_attr(
+    feature = "wasm",
+    derive(tsify::Tsify),
+    tsify(into_wasm_abi, from_wasm_abi)
+)]
 #[derive(Debug, Clone)]
 pub struct InstrumentationConfig {
     pub channel_name: String,
@@ -59,6 +75,11 @@ impl InstrumentationConfig {
     }
 }
 
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(rename_all = "camelCase")
+)]
 #[derive(Debug, Clone)]
 pub struct Config {
     pub instrumentations: Vec<InstrumentationConfig>,

@@ -11,6 +11,8 @@ pub(crate) enum FunctionType {
     Method,
 }
 
+#[cfg_attr(feature = "wasm", derive(tsify::Tsify))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
 pub enum FunctionKind {
     Sync,
@@ -40,31 +42,49 @@ impl FunctionKind {
     }
 }
 
+#[cfg_attr(feature = "wasm", derive(tsify::Tsify))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(untagged, rename_all_fields = "camelCase")
+)]
 #[derive(Debug, Clone)]
 pub enum FunctionQuery {
-    ClassConstructor {
-        class_name: String,
-        index: usize,
-    },
+    // The order here matters because this enum is untagged, serde will try
+    // choose the first variant that matches the data.
     ClassMethod {
         class_name: String,
         method_name: String,
         kind: FunctionKind,
+        #[cfg_attr(feature = "serde", serde(default))]
+        #[cfg_attr(feature = "wasm", tsify(optional))]
+        index: usize,
+    },
+    ClassConstructor {
+        class_name: String,
+        #[cfg_attr(feature = "serde", serde(default))]
+        #[cfg_attr(feature = "wasm", tsify(optional))]
         index: usize,
     },
     ObjectMethod {
         method_name: String,
         kind: FunctionKind,
+        #[cfg_attr(feature = "serde", serde(default))]
+        #[cfg_attr(feature = "wasm", tsify(optional))]
         index: usize,
     },
     FunctionDeclaration {
         function_name: String,
         kind: FunctionKind,
+        #[cfg_attr(feature = "serde", serde(default))]
+        #[cfg_attr(feature = "wasm", tsify(optional))]
         index: usize,
     },
     FunctionExpression {
         expression_name: String,
         kind: FunctionKind,
+        #[cfg_attr(feature = "serde", serde(default))]
+        #[cfg_attr(feature = "wasm", tsify(optional))]
         index: usize,
     },
 }
