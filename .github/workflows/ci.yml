@@ -1,5 +1,5 @@
 name: CI
-on: [push]
+on: [push, pull_request]
 env:
   CARGO_TERM_COLOR: always
   RUST_VERSION: 1.84.1
@@ -14,6 +14,10 @@ jobs:
         run: rustup toolchain install ${{ env.RUST_VERSION }} --component clippy --component rustfmt && rustup default ${{ env.RUST_VERSION }}
       - name: Cache
         uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: 'package.json'
       - name: Build
         run: cargo build --all
       - name: Run tests
@@ -22,6 +26,8 @@ jobs:
         run: cargo clippy --all -- -D warnings
       - name: Run fmt
         run: cargo fmt --all -- --check
+      - name: Build and Test wasm
+        run: npm install && npm run build && npm test
       - name: Install license tool
         run: cargo install dd-rust-license-tool
       - name: Run license tool

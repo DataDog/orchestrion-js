@@ -18,17 +18,23 @@
  * Unless explicitly stated otherwise all files in this repository are licensed under the Apache-2.0 License.
  * This product includes software developed at Datadog (<https://www.datadoghq.com>/). Copyright 2025 Datadog, Inc.
  **/
-use std::path::PathBuf;
+use std::{error::Error, path::PathBuf, sync::Arc};
+use swc::{
+    config::{IsModule, SourceMapsConfig},
+    try_with_handler, Compiler, HandlerOpts, PrintArgs,
+};
 use swc_core::{
+    common::{comments::Comments, errors::ColorConfig, FileName, FilePathMapping},
     ecma::{
         ast::{
-            AssignExpr, ClassDecl, ClassMethod, Constructor, FnDecl, MethodProp, Module, Script,
-            Str, VarDecl,
+            AssignExpr, ClassDecl, ClassMethod, Constructor, EsVersion, FnDecl, MethodProp, Module,
+            Script, Str, VarDecl,
         },
         visit::{VisitMut, VisitMutWith},
     },
     quote,
 };
+use swc_ecma_parser::{EsSyntax, Syntax};
 
 mod error;
 
@@ -40,6 +46,9 @@ pub use instrumentation::*;
 
 mod function_query;
 pub use function_query::*;
+
+#[cfg(feature = "wasm")]
+pub mod wasm;
 
 /// This struct is responsible for managing all instrumentations. It's created from a YAML string
 /// via the [`FromStr`] trait. See tests for examples, but by-and-large this just means you can
@@ -65,36 +74,101 @@ impl Instrumentor {
 
     /// For a given module name, version, and file path within the module, return all
     /// `Instrumentation` instances that match.
-    pub fn get_matching_instrumentations<'a>(
-        &'a mut self,
-        module_name: &'a str,
-        version: &'a str,
-        file_path: &'a PathBuf,
-    ) -> InstrumentationVisitor<'a> {
+    #[must_use]
+    pub fn get_matching_instrumentations(
+        &self,
+        module_name: &str,
+        version: &str,
+        file_path: &PathBuf,
+    ) -> InstrumentationVisitor {
         let instrumentations = self
             .instrumentations
-            .iter_mut()
+            .iter()
             .filter(|instr| instr.matches(module_name, version, file_path));
 
-        InstrumentationVisitor::new(instrumentations, self.dc_module.as_ref())
+        InstrumentationVisitor::new(instrumentations, &self.dc_module)
     }
 }
 
 #[derive(Debug)]
-pub struct InstrumentationVisitor<'a> {
-    instrumentations: Vec<&'a mut Instrumentation>,
-    dc_module: &'a str,
+pub struct InstrumentationVisitor {
+    instrumentations: Vec<Instrumentation>,
+    dc_module: String,
 }
 
-impl<'a> InstrumentationVisitor<'a> {
-    fn new<I>(instrumentations: I, dc_module: &'a str) -> Self
+impl InstrumentationVisitor {
+    fn new<'b, I>(instrumentations: I, dc_module: &str) -> Self
     where
-        I: Iterator<Item = &'a mut Instrumentation> + 'a,
+        I: Iterator<Item = &'b Instrumentation>,
     {
         Self {
-            instrumentations: instrumentations.collect(),
-            dc_module,
+            instrumentations: instrumentations.cloned().collect(),
+            dc_module: dc_module.to_string(),
         }
+    }
+
+    #[must_use]
+    pub fn has_instrumentations(&self) -> bool {
+        !self.instrumentations.is_empty()
+    }
+
+    /// Transform the given JavaScript code.
+    /// # Errors
+    /// Returns an error if the transformation fails.
+    pub fn transform(
+        &mut self,
+        contents: &str,
+        is_module: IsModule,
+    ) -> Result<String, Box<dyn Error>> {
+        let compiler = Compiler::new(Arc::new(swc_core::common::SourceMap::new(
+            FilePathMapping::empty(),
+        )));
+
+        #[allow(clippy::redundant_closure_for_method_calls)]
+        Ok(try_with_handler(
+            compiler.cm.clone(),
+            HandlerOpts {
+                color: ColorConfig::Never,
+                skip_filename: false,
+            },
+            |handler| {
+                let source_file = compiler.cm.new_source_file(
+                    Arc::new(FileName::Real(PathBuf::from("index.mjs"))),
+                    contents.to_string(),
+                );
+
+                let program = compiler
+                    .parse_js(
+                        source_file.clone(),
+                        handler,
+                        EsVersion::latest(),
+                        Syntax::Es(EsSyntax {
+                            explicit_resource_management: true,
+                            import_attributes: true,
+                            decorators: true,
+                            ..Default::default()
+                        }),
+                        is_module,
+                        Some(&compiler.comments() as &dyn Comments),
+                    )
+                    .map(|mut program| {
+                        program.visit_mut_with(self);
+                        program
+                    })?;
+                let result = compiler.print(
+                    &program,
+                    PrintArgs {
+                        source_file_name: None,
+                        source_map: SourceMapsConfig::Bool(false),
+                        comments: None,
+                        emit_source_map_columns: false,
+                        ..Default::default()
+                    },
+                )?;
+                Ok(result.code)
+            },
+        )
+        .map_err(|e| e.to_pretty_error())?)
     }
 }
 
@@ -119,14 +193,14 @@ macro_rules! visit_with_all_fn {
     };
 }
 
-impl VisitMut for InstrumentationVisitor<'_> {
+impl VisitMut for InstrumentationVisitor {
     fn visit_mut_module(&mut self, item: &mut Module) {
         let mut line = quote!(
             "import { tracingChannel as tr_ch_apm_tracingChannel } from 'dc';" as ModuleItem,
         );
         if let Some(module_decl) = line.as_mut_module_decl() {
             if let Some(import) = module_decl.as_mut_import() {
-                import.src = Box::new(Str::from(self.dc_module));
+                import.src = Box::new(Str::from(self.dc_module.as_ref()));
                 item.body.insert(0, line);
             }
         }
@@ -139,7 +213,7 @@ impl VisitMut for InstrumentationVisitor<'_> {
     fn visit_mut_script(&mut self, item: &mut Script) {
         let import = quote!(
             "const { tracingChannel: tr_ch_apm_tracingChannel } = require($dc);" as Stmt,
-            dc: Expr = self.dc_module.into(),
+            dc: Expr = self.dc_module.clone().into(),
         );
         item.body.insert(get_script_start_index(item), import);
         visit_with_all!(self, visit_mut_script, item);
