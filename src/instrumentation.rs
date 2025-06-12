@@ -103,13 +103,13 @@ impl Instrumentation {
         ));
 
         body.stmts = vec![
-            quote!("const traced = $traced;" as Stmt, traced: Expr = traced_fn.into()),
+            quote!("const __apm$traced = $traced;" as Stmt, traced: Expr = traced_fn.into()),
             quote!(
-                "if (!$ch.hasSubscribers) return traced();" as Stmt,
+                "if (!$ch.hasSubscribers) return __apm$traced();" as Stmt,
                 ch = ch_ident
             ),
             quote!(
-                "return $trace(traced, { arguments, self: this } );" as Stmt,
+                "return $trace(__apm$traced, { arguments, self: this } );" as Stmt,
                 trace = trace_ident
             ),
         ];
