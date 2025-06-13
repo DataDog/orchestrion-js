@@ -189,8 +189,7 @@ impl Instrumentation {
         let channel_element = self.create_tracing_channel();
         let channel_module_item = ModuleItem::Stmt(channel_element.clone());
         if !node.body.iter().any(|item| item == &channel_module_item) {
-            node.body
-                .insert(1, ModuleItem::Stmt(channel_element));
+            node.body.insert(1, ModuleItem::Stmt(channel_element));
         }
         true
     }
@@ -199,8 +198,7 @@ impl Instrumentation {
         let start_index = get_script_start_index(node);
         let channel_element = self.create_tracing_channel();
         if !node.body.iter().any(|item| item == &channel_element) {
-            node.body
-                .insert(start_index + 1, channel_element);
+            node.body.insert(start_index + 1, channel_element);
         }
         true
     }
