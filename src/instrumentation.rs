@@ -186,15 +186,19 @@ impl Instrumentation {
     // `visit_mut_children_with`.
 
     pub fn visit_mut_module(&mut self, node: &mut Module) -> bool {
-        node.body
-            .insert(1, ModuleItem::Stmt(self.create_tracing_channel()));
+        let channel_element = ModuleItem::Stmt(self.create_tracing_channel());
+        if !node.body.iter().any(|item| item == &channel_element) {
+            node.body.insert(1, channel_element);
+        }
         true
     }
 
     pub fn visit_mut_script(&mut self, node: &mut Script) -> bool {
         let start_index = get_script_start_index(node);
-        node.body
-            .insert(start_index + 1, self.create_tracing_channel());
+        let channel_element = self.create_tracing_channel();
+        if !node.body.iter().any(|item| item == &channel_element) {
+            node.body.insert(start_index + 1, channel_element);
+        }
         true
     }
 
