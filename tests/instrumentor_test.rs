@@ -17,3 +17,5 @@ mod multiple_load_cjs;
 mod object_method_cjs;
 mod polyfill_cjs;
 mod polyfill_mjs;
+mod single_channel_multiple_usages_cjs;
+mod single_channel_multiple_usages_mjs;
