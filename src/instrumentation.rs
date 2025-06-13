@@ -186,10 +186,9 @@ impl Instrumentation {
     // `visit_mut_children_with`.
 
     pub fn visit_mut_module(&mut self, node: &mut Module) -> bool {
-        let channel_element = self.create_tracing_channel();
-        let channel_module_item = ModuleItem::Stmt(channel_element.clone());
-        if !node.body.iter().any(|item| item == &channel_module_item) {
-            node.body.insert(1, ModuleItem::Stmt(channel_element));
+        let channel_element = ModuleItem::Stmt(self.create_tracing_channel());
+        if !node.body.iter().any(|item| item == &channel_element) {
+            node.body.insert(1, channel_element);
         }
         true
     }
