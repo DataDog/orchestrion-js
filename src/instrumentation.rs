@@ -8,8 +8,8 @@ use swc_core::common::{Span, SyntaxContext};
 use swc_core::ecma::{
     ast::{
         ArrowExpr, AssignExpr, AssignTarget, BlockStmt, ClassDecl, ClassMethod, Constructor, Expr,
-        FnDecl, FnExpr, Ident, Lit, MemberProp, MethodProp, Module, ModuleItem, Param, Pat, PropName,
-        Script, SimpleAssignTarget, Stmt, Str, VarDecl,
+        FnDecl, FnExpr, Ident, Lit, MemberProp, MethodProp, Module, ModuleItem, Param, Pat,
+        PropName, Script, SimpleAssignTarget, Stmt, Str, VarDecl,
     },
     atoms::Atom,
 };
