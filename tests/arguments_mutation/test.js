@@ -24,7 +24,6 @@ const handler = {
 tracingChannel('orchestrion:undici:fetch_simple').subscribe(handler);
 tracingChannel('orchestrion:undici:fetch_complex').subscribe(handler);
 
-
 assert.strictEqual(fetch_simple.length, 2);
 assert.strictEqual(fetch_complex.length, 2);
 
@@ -36,4 +35,4 @@ const cb = function (a, b) {
 };
 
 assert.strictEqual(fetch_simple.apply({ this: 'this' }, ['https://example.com', cb]), 'return');
-assert.strictEqual(fetch_complex.apply({ this: 'this' }, [{ url: 'https://example.com' }, cb]), 'return');
+assert.strictEqual(fetch_complex.apply({ this: 'this' }, [{ url: 'https://example.com', tuple: [] }, cb]), 'return');
