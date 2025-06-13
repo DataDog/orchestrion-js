@@ -108,7 +108,6 @@ impl Instrumentation {
 
         let traced_fn = self.new_fn(traced_body, vec![]);
 
-
         let ch_ident = ident!(format!("tr_ch_apm${}", &self.config.channel_name));
         let trace_ident = ident!(format!(
             "tr_ch_apm${}.{}",
